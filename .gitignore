@@ -1,0 +1,9 @@
+# files
+.env
+yarn-error.log
+tsconfig.tsbuildinfo
+
+# folders
+node_modules/
+packages/*/*
+dist/
