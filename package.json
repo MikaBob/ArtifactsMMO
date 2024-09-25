@@ -3,14 +3,14 @@
     "private": true,
     "scripts": {
         "build": "esbuild ./src/app.ts --bundle --outfile=dist/app.js --platform=node",
+        "build-gui": "esbuild ./src/GUI/index.ts --bundle --sourcemap --target=firefox130 --outfile=public/gui.js --platform=browser --loader:.html=text",
         "compile": "tsc",
         "lint": "eslint --fix src",
         "local": "yarn build && node dist/app.js",
-        "make": "yarn update-api-sdk && yarn lint && yarn compile && yarn build",
+        "make": "yarn update-api-sdk && yarn lint && yarn compile && yarn build && yarn build-gui",
         "update-api-sdk": "openapi-generator-cli generate"
     },
     "dependencies": {
-        "dotenv": "^16.4.5",
         "mongodb": "^6.9.0"
     },
     "devDependencies": {

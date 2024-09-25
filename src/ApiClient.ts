@@ -1,10 +1,7 @@
-import env from 'dotenv'
+import { ACCOUNT_TOKEN } from '../.env.js'
 import axios from 'axios'
 import { CharactersApi, Configuration, MapsApi, MyCharactersApi } from 'artifactsmmo-sdk'
 
-env.config()
-
-const { ACCOUNT_TOKEN } = process.env
 const ARTIFACTSMMO_API_ENDPOINT = 'https://api.artifactsmmo.com'
 
 type APITypes = {
@@ -43,7 +40,7 @@ const init = () => {
         },
     )
 
-    if ((ACCOUNT_TOKEN ?? '') === '') throw new Error('Invalid token provided')
+    if (!ACCOUNT_TOKEN) throw new Error('Invalid token provided')
 
     const configuration = new Configuration({
         basePath: ARTIFACTSMMO_API_ENDPOINT ?? '',

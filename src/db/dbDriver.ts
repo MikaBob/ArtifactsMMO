@@ -1,7 +1,7 @@
+import { MONGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_USERNAME, MONGO_DB_PASSWORD } from '../../.env.js'
 import { Db, MongoClient, MongoClientOptions } from 'mongodb'
 
 const MONGO_DB_DBNAME = 'artifacts_mmo'
-const { MONGO_DB_HOST, MONGO_DB_PORT, MONGO_DB_USERNAME, MONGO_DB_PASSWORD } = process.env
 
 const getConnectionString = (): string => {
     let credentials = ''

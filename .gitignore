@@ -1,5 +1,5 @@
 # files
-.env
+.env.js
 yarn-error.log
 tsconfig.tsbuildinfo
 
@@ -8,6 +8,8 @@ node_modules/
 packages/*/*
 dist/
 db/*
+public/*
 
 # exceptions
 !db/.gitkeep
+!public/index.html

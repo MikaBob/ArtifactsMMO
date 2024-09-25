@@ -7,6 +7,7 @@ const MAX_MAP_PAGE_SIZE = 100
 const apiClient = getApiCLient()
 
 export const syncMaps = async () => {
+    console.log('Start map sync')
     const mapsDataPage: DataPageMapSchema = (await apiClient.maps.getAllMapsMapsGet(undefined, undefined, 1, 1)).data
 
     if (mapsDataPage.total === null) {
@@ -22,4 +23,5 @@ export const syncMaps = async () => {
             }),
         )
     }
+    console.log('Map sync done')
 }
