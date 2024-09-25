@@ -1,6 +1,6 @@
 import env from 'dotenv'
 import axios from 'axios'
-import { Configuration, MyCharactersApi } from 'artifactsmmo-sdk'
+import { CharactersApi, Configuration, MapsApi, MyCharactersApi } from 'artifactsmmo-sdk'
 
 env.config()
 
@@ -9,26 +9,27 @@ const ARTIFACTSMMO_API_ENDPOINT = 'https://api.artifactsmmo.com'
 
 type APITypes = {
     myCharacters: MyCharactersApi
+    characters: CharactersApi
+    maps: MapsApi
 }
 
-let APIClient: APITypes
+let APIClient: APITypes | null = null
 
 const init = () => {
     const instance = axios.create({})
 
     instance.interceptors.response.use(
-        // return data directly
         async success => {
-            return success.data.data
+            return success
         },
-        // retry logic for 429 rate-limit errors
+        // retry logic for 499 rate-limit errors
         async error => {
             const apiError = error.response?.data?.error
             const { method, url, data } = error.response.config
 
             console.error(`API error ${method.toUpperCase()} ${url} ${data ?? ''}`, apiError)
 
-            if (error.response?.status === 429) {
+            if (error.response?.status === 499) {
                 const retryAfter = error.response.headers['retry-after']
 
                 await new Promise(resolve => {
@@ -51,10 +52,17 @@ const init = () => {
 
     APIClient = {
         myCharacters: new MyCharactersApi(configuration, undefined, instance),
+        characters: new CharactersApi(configuration, undefined, instance),
+        maps: new MapsApi(configuration, undefined, instance),
     }
     console.log(`Client API initialized`)
 
     return APIClient
 }
 
-export { init }
+const getApiCLient = (): APITypes => {
+    if (APIClient === null) init()
+    return APIClient as APITypes
+}
+
+export { getApiCLient }
