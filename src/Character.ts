@@ -9,3 +9,7 @@ export const getMainCharacter = async (refresh = false) => {
     mainCharacter = (await getApiCLient().characters.getCharacterCharactersNameGet(MAIN_CHARACTER_NAME)).data.data
     return mainCharacter
 }
+
+export const updateCharacter = (updatedCharacter: CharacterSchema) => {
+    mainCharacter = updatedCharacter
+}
