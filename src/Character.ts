@@ -1,15 +1,12 @@
 import { CharacterSchema } from 'artifactsmmo-sdk'
 import { getApiCLient } from './ApiClient'
 
-export const MAIN_CHARACTER_NAME = 'Swidz'
+export const PLAYER_ONE = 'Swidz'
+export const PLAYER_TWO = 'Nolie'
+export const PLAYER_THREE = 'Blargh'
+export const PLAYER_FOUR = 'Niebieska'
+export const CHARACTERS_NAME = ['', PLAYER_ONE, PLAYER_TWO, PLAYER_THREE, PLAYER_FOUR]
 
-let mainCharacter: CharacterSchema | null = null
-export const getMainCharacter = async (refresh = false) => {
-    if (!refresh && mainCharacter !== null) return mainCharacter
-    mainCharacter = (await getApiCLient().characters.getCharacterCharactersNameGet(MAIN_CHARACTER_NAME)).data.data
-    return mainCharacter
-}
-
-export const updateCharacter = (updatedCharacter: CharacterSchema) => {
-    mainCharacter = updatedCharacter
+export const getCharacterByID = async (id: number): Promise<CharacterSchema> => {
+    return (await getApiCLient().characters.getCharacterCharactersNameGet(CHARACTERS_NAME[id])).data.data
 }
