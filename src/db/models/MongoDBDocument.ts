@@ -18,11 +18,7 @@ class MongoDBDocument implements Document {
         const dbClient: Db = await connectToMongo()
         const result: UpdateResult = await dbClient
             .collection(this.getAssociatedCollectionName())
-            .updateOne(
-                { _id: this._id },
-                { $set: this },
-                { upsert: true, serializeFunctions: false, ignoreUndefined: true },
-            )
+            .updateOne({ _id: this._id }, { $set: this }, { upsert: true, serializeFunctions: false, ignoreUndefined: true })
         return (result.modifiedCount || result.upsertedCount) > 0
     }
 }
