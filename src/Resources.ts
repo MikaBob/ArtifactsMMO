@@ -1,4 +1,4 @@
-import { DataPageResourceSchema, ResourceSchema, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
+import { CraftSchemaSkillEnum, DataPageItemSchema, DataPageResourceSchema, ItemSchema, ResourceSchema, ResourceSchemaSkillEnum, SimpleItemSchema } from 'artifactsmmo-sdk'
 import { getApiCLient } from './ApiClient'
 import { ResourceDocument } from './db/models/ResourceDocument'
 
@@ -28,4 +28,13 @@ export const syncResources = async (): Promise<void> => {
 export const findResourceBySkill = async (skill: ResourceSchemaSkillEnum, skillLevel: number): Promise<ResourceSchema> => {
     const resourcesDataPage: DataPageResourceSchema = (await apiClient.resources.getAllResourcesResourcesGet(skillLevel, skillLevel, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
     return resourcesDataPage.data[0]
+}
+
+export const findItemsBySkill = async (skill: CraftSchemaSkillEnum, skillLevel: number): Promise<ItemSchema[]> => {
+    const resourcesDataPage: DataPageItemSchema = (await apiClient.items.getAllItemsItemsGet(skillLevel, skillLevel, undefined, undefined, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
+    return resourcesDataPage.data
+}
+
+export const getItemsInBank = async (): Promise<SimpleItemSchema[]> => {
+    return (await apiClient.myAccount.getBankItemsMyBankItemsGet(undefined, 1, 100)).data.data
 }

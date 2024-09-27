@@ -3,16 +3,17 @@ import Player from './Player'
 import { getLowestTenOfLevel } from './Utils'
 
 export const main = async () => {
-    /* 
+    //Game start
+
     const swidz = new Player(await getCharacterByID(1))
     Promise.resolve().then(function resolver(): unknown {
-        return swidz.gatherResource('mining').then(resolver)
+        return swidz.craftItem('mining', 1).then(resolver)
     })
- */
+
     /* 
     const nolie = new Player(await getCharacterByID(2))
     Promise.resolve().then(function resolver(): unknown {
-        return nolie.gatherResource('mining').then(resolver)
+        return nolie.craftItem('mining').then(resolver)
     })
  */
     /* 

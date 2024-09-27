@@ -49,16 +49,18 @@ export default class BasePlayer {
         const depositSchema: SimpleItemSchema = { code: itemName, quantity: quantity }
         return await this.actionCallback((await apiClient.myCharacters.actionDepositBankMyNameActionBankDepositPost(this.me.name, depositSchema)).data.data)
     }
+    async withdrawItem(itemName: string, quantity: number): Promise<void> {
+        console.log(`Withdraw ${quantity} ${itemName} from bank`)
+        const withdrawSchema: SimpleItemSchema = { code: itemName, quantity: quantity }
+        return await this.actionCallback((await apiClient.myCharacters.actionWithdrawBankMyNameActionBankWithdrawPost(this.me.name, withdrawSchema)).data.data)
+    }
     async fight(): Promise<void> {
         console.log(`Fight`)
         return await this.actionCallback((await apiClient.myCharacters.actionFightMyNameActionFightPost(this.me.name)).data.data)
     }
     async gather(): Promise<void> {
         console.log(`Gather`)
-        const test = await apiClient.myCharacters.actionGatheringMyNameActionGatheringPost(this.me.name)
-        console.error(test)
-        console.error(test.data)
-        return await this.actionCallback(test.data.data)
+        return await this.actionCallback((await apiClient.myCharacters.actionGatheringMyNameActionGatheringPost(this.me.name)).data.data)
     }
     async craft(objectToCraft: string, quantity: number = 1): Promise<void> {
         const crafting: CraftingSchema = { code: objectToCraft, quantity: quantity }
@@ -79,8 +81,18 @@ export default class BasePlayer {
         if (this.me.name === updatedCharacter.name) this.me = updatedCharacter
     }
     async actionCallback(data: CharacterMovementDataSchema | CharacterFightDataSchema | SkillDataSchema | BankItemTransactionSchema): Promise<void> {
-        this.updateCharacter(data.character)
-        return waitForCooldown(data.cooldown)
+        if (data !== undefined) {
+            this.updateCharacter(data.character)
+            return waitForCooldown(data.cooldown)
+        }
+        const now = Date.now()
+        return waitForCooldown({
+            reason: 'unequip',
+            remaining_seconds: 5,
+            total_seconds: 5,
+            started_at: new Date(now).toISOString(),
+            expiration: new Date(now + 5000).toISOString(),
+        })
     }
 
     isInventoryFull(): boolean {
