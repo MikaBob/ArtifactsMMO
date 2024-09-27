@@ -1,6 +1,6 @@
 import { ACCOUNT_TOKEN } from '../.env.js'
 import axios from 'axios'
-import { CharactersApi, Configuration, MapsApi, MyCharactersApi } from 'artifactsmmo-sdk'
+import { CharactersApi, Configuration, MapsApi, MyCharactersApi, ResourcesApi } from 'artifactsmmo-sdk'
 
 const ARTIFACTSMMO_API_ENDPOINT = 'https://api.artifactsmmo.com'
 
@@ -8,6 +8,7 @@ type APITypes = {
     myCharacters: MyCharactersApi
     characters: CharactersApi
     maps: MapsApi
+    resources: ResourcesApi
 }
 
 let APIClient: APITypes | null = null
@@ -22,12 +23,12 @@ const init = () => {
         // retry logic for 499 rate-limit errors
         async error => {
             const apiError = error.response?.data?.error
-            const { method, url, data } = error.response.config
-
-            console.error(`API error ${method.toUpperCase()} ${url} ${data ?? ''}`, apiError)
-
+            if (error.response !== undefined) {
+                const { method, url, data } = error.response.config
+                console.error(`API error ${method.toUpperCase()} ${url} ${data ?? ''}`, apiError)
+            }
             if (error.response?.status === 499) {
-                const retryAfter = error.response.headers['retry-after']
+                const retryAfter = error.response.headers['retry-after'] ?? 2
 
                 await new Promise(resolve => {
                     setTimeout(resolve, retryAfter * 1000)
@@ -51,6 +52,7 @@ const init = () => {
         myCharacters: new MyCharactersApi(configuration, undefined, instance),
         characters: new CharactersApi(configuration, undefined, instance),
         maps: new MapsApi(configuration, undefined, instance),
+        resources: new ResourcesApi(configuration, undefined, instance),
     }
     console.log(`Client API initialized`)
 

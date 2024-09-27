@@ -1,5 +1,7 @@
 import { MapContentSchema, MapSchema } from 'artifactsmmo-sdk'
 import { MongoDBDocument } from './MongoDBDocument'
+import { Db } from 'mongodb'
+import { connectToMongo } from '../dbDriver'
 
 const COLLECTION_NAME_FOR_MAPS = 'maps'
 
@@ -21,5 +23,10 @@ export class MapDocument extends MongoDBDocument implements MapSchema {
 
     getAssociatedCollectionName(): string {
         return COLLECTION_NAME_FOR_MAPS
+    }
+
+    findByContentCode = async (contentCode: string): Promise<MapDocument[]> => {
+        const dbClient: Db = await connectToMongo()
+        return await dbClient.collection<MapDocument>(this.getAssociatedCollectionName()).find({ 'content.code': contentCode }).toArray()
     }
 }
