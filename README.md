@@ -8,12 +8,12 @@ Using [OpenAPI generator](https://openapi-generator.tech/) I generated the SDK b
 
 Copy `.env.js.sample` to a `.env.js` file at the root directory. Fill up the values:
 
--   Access token is your account's API token
--   Mongo vars are to connect to the DB
+-   Access token is your account's API token.
+-   Mongo vars are to connect to the DB.
 
 Start your DB using `start_mongo.bat`.
 
-Running `yarn make` should build the whole project. `yarn local` will execute the automated script locally.
+Running `yarn make` should build the whole project. `yarn local PLAYER_NAME` will execute the automated script locally.
 
 If you want to play manually, you'll need to copy the content of the `public` folder in a web server.
 
@@ -21,21 +21,11 @@ If you want to play manually, you'll need to copy the content of the `public` fo
 
 So far there are only 4 buttons for each cardinal directions. Guess what, "Move up" move the main character up by one cell...
 
-# Todo
+_EDIT: I realized afterwards that this is useless since the official client already do it very well._
 
--   [x] GUI (ended up to be useless)
+# Script
 
-    -   [x] Controls to move around
-    -   [x] Do basic actions
-        -   [x] Fight
-        -   [x] Gather
-        -   [x] Craft
-        -   ~~[ ] Deposit / Withdraw~~
+Under src/Characters.ts there is a table that contains which loop each character will execute. When an action is done, it will go to the next one / restart the loop.
 
--   [ ] Init
-    -   [x] Scan the map & save in DB
-    -   [x] Retrieve bank details
--   [x] Create a loop to gather a resource (name & qty)
-    -   [x] Using map in DB, look for the closest spot
-    -   [x] Put resource to the bank
--   [x] Create a loop to complete a task
+Action are define by an action type (gather, craft, fight), then the name of the action we want to execute (a skill or monster name), and a level.
+Level is just for gathering and crafting, to indicate which resource/item to focus on. Without specifying a level, it will fallback to the player's current level of the skill.

@@ -27,14 +27,19 @@ export const syncResources = async (): Promise<void> => {
 
 export const findResourceBySkill = async (skill: ResourceSchemaSkillEnum, skillLevel: number): Promise<ResourceSchema> => {
     const resourcesDataPage: DataPageResourceSchema = (await apiClient.resources.getAllResourcesResourcesGet(skillLevel, skillLevel, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
-    return resourcesDataPage.data[0]
+    return parsePagingResult(resourcesDataPage.data[0])
 }
 
 export const findItemsBySkill = async (skill: CraftSchemaSkillEnum, minSkillLevel: number, maxSkillLevel: number): Promise<ItemSchema[]> => {
     const resourcesDataPage: DataPageItemSchema = (await apiClient.items.getAllItemsItemsGet(minSkillLevel, maxSkillLevel, undefined, undefined, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
-    return resourcesDataPage.data
+    return parsePagingResult(resourcesDataPage.data)
 }
 
 export const getItemsInBank = async (): Promise<SimpleItemSchema[]> => {
-    return (await apiClient.myAccount.getBankItemsMyBankItemsGet(undefined, 1, 100)).data.data
+    const items = (await apiClient.myAccount.getBankItemsMyBankItemsGet(undefined, 1, 100)).data
+    return parsePagingResult(items.data)
+}
+
+const parsePagingResult = <Array>(data: Array): Array => {
+    return data === null || data === undefined ? ([] as Array) : data
 }

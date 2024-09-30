@@ -13,7 +13,6 @@ import {
 import { getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
-import { PLAYER_FIVE } from './Character'
 
 const apiClient = getApiCLient()
 
@@ -61,8 +60,8 @@ export default class BasePlayer {
     }
     async fight(): Promise<void> {
         console.log(`${this.me.name}: Fight`)
-        if (this.me.name === PLAYER_FIVE) {
-            throw new Error(`${PLAYER_FIVE} should not fight anymore`)
+        if (this.me.name === 'Chief' && this.me.level >= 10) {
+            throw new Error(`${this.me.name} should not fight anymore`)
         }
         return await this.actionCallback((await apiClient.myCharacters.actionFightMyNameActionFightPost(this.me.name)).data.data)
     }

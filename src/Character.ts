@@ -1,51 +1,48 @@
 import { CharacterSchema, CraftSchemaSkillEnum, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
 import { getApiCLient } from './ApiClient'
 
-export const PLAYER_ONE = 'Swidz'
-export const PLAYER_TWO = 'Nolie'
-export const PLAYER_THREE = 'Blargh'
-export const PLAYER_FOUR = 'Niebieska'
-export const PLAYER_FIVE = 'Chief'
-export const CHARACTERS_NAME = ['', PLAYER_ONE, PLAYER_TWO, PLAYER_THREE, PLAYER_FOUR, PLAYER_FIVE]
-
-export const getCharacterByID = async (id: number): Promise<CharacterSchema> => {
-    console.log(id, CHARACTERS_NAME[id])
-    return (await getApiCLient().characters.getCharacterCharactersNameGet(CHARACTERS_NAME[id])).data.data
+export const PlayerName = {
+    Swidz: 'Swidz',
+    Nolie: 'Nolie',
+    Blargh: 'Blargh',
+    Niebieska: 'Niebieska',
+    Chief: 'Chief',
 }
 
-type ActionLoop = {
-    actionType: 'craft' | 'gather' | 'fight'
-    actionName?: ResourceSchemaSkillEnum | CraftSchemaSkillEnum
+export type PlayerName = (typeof PlayerName)[keyof typeof PlayerName]
+
+export const getCharacterByName = async (name: PlayerName): Promise<CharacterSchema> => {
+    console.log(name)
+    return (await getApiCLient().characters.getCharacterCharactersNameGet(name)).data.data
+}
+
+export type ActionLoop = GatherAction | CraftAction | FightAction
+
+export type GatherAction = {
+    actionType: 'gather'
+    actionName: ResourceSchemaSkillEnum
     level?: number
 }
 
-export const getCharacterActions = (playerName: string): ActionLoop[] => {
+export type CraftAction = {
+    actionType: 'craft'
+    actionName: CraftSchemaSkillEnum
+    level?: number
+}
+
+export type FightAction = {
+    actionType: 'fight'
+    actionName: string
+}
+
+export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
     switch (playerName) {
-        case PLAYER_ONE:
+        case 'Swidz':
             return [
-                {
-                    actionType: 'craft',
-                    actionName: 'weaponcrafting',
-                },
-                {
-                    actionType: 'craft',
-                    actionName: 'mining',
-                    level: 1,
-                },
-                {
-                    actionType: 'craft',
-                    actionName: 'mining',
-                    level: 20,
-                },
                 {
                     actionType: 'craft',
                     actionName: 'mining',
                     level: 10,
-                },
-                {
-                    actionType: 'gather',
-                    actionName: 'mining',
-                    level: 1,
                 },
                 {
                     actionType: 'gather',
@@ -53,37 +50,15 @@ export const getCharacterActions = (playerName: string): ActionLoop[] => {
                     level: 10,
                 },
             ]
-        case PLAYER_TWO:
+        case 'Nolie':
+        case 'Blargh':
             return [
                 {
-                    actionType: 'craft',
-                    actionName: 'gearcrafting',
-                },
-                {
-                    actionType: 'gather',
-                    actionName: 'mining',
-                    level: 1,
-                },
-                {
-                    actionType: 'gather',
-                    actionName: 'mining',
-                    level: 10,
+                    actionType: 'fight',
+                    actionName: 'cow',
                 },
             ]
-        case PLAYER_THREE:
-            return [
-                {
-                    actionType: 'gather',
-                    actionName: 'woodcutting',
-                    level: 1,
-                },
-                {
-                    actionType: 'gather',
-                    actionName: 'woodcutting',
-                    level: 10,
-                },
-            ]
-        case PLAYER_FOUR:
+        case 'Niebieska':
             return [
                 {
                     actionType: 'craft',
@@ -91,31 +66,16 @@ export const getCharacterActions = (playerName: string): ActionLoop[] => {
                 },
                 {
                     actionType: 'craft',
-                    actionName: 'woodcutting',
-                    level: 1,
-                },
-                {
-                    actionType: 'craft',
-                    actionName: 'woodcutting',
-                    level: 20,
-                },
-                {
-                    actionType: 'craft',
-                    actionName: 'woodcutting',
-                    level: 10,
-                },
-                {
-                    actionType: 'gather',
-                    actionName: 'woodcutting',
+                    actionName: 'mining',
                     level: 1,
                 },
                 {
                     actionType: 'gather',
-                    actionName: 'woodcutting',
+                    actionName: 'mining',
                     level: 10,
                 },
             ]
-        case PLAYER_FIVE:
+        case 'Chief':
             return [
                 {
                     actionType: 'craft',

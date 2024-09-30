@@ -88,8 +88,25 @@ export default class Player extends BasePlayer {
         })
     }
 
+    fightMonster(monsterName: string) {
+        return new Promise<void>(async resolve => {
+            console.log(`${this.me.name}: Try action fight monster ${monsterName}`)
+            const mapsWhereMonsterIsPresent = await findMapsWithContent(monsterName)
+            const mapToFight = await getClosestMapFromDestination(mapsWhereMonsterIsPresent, fromCoordinatesToDestination(this.me.x, this.me.y))
+            console.log(`${this.me.name}: Start fighting '${monsterName}' at ${mapToFight._id}`)
+
+            await this.moveTo(mapToFight.x, mapToFight.y)
+            while (this.getCurrentInventoryLevel() < this.me.inventory_max_items) {
+                await this.fight()
+            }
+            console.log(`${this.me.name}: Inventory full`)
+            await Promise.allSettled([this.emptyInventoryInBank()])
+            resolve()
+        })
+    }
+
     emptyInventoryInBank() {
-        const itemToKeep = ['raw_chicken', 'golden_egg', 'golden_shrimp', 'emerald', 'topaz', 'sap', 'ruby', 'tasks_coin', 'egg', 'sapphire']
+        const itemToKeep = ['golden_egg', 'golden_shrimp', 'emerald', 'topaz', 'ruby', 'sapphire', 'tasks_coin', 'iron_pickaxe', 'iron_axe', 'iron_sword', 'iron_dagger', 'fire_bow']
         return new Promise<void>(async resolve => {
             console.log(`${this.me.name}: Start emptying inventory in bank`)
             await this.goToBuildingFor('bank')
