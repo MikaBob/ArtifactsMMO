@@ -7,9 +7,13 @@ import {
     GetAllTasksTasksListGetSkillEnum as SkillEnum,
     SimpleItemSchema,
     SkillDataSchema,
+    BankGoldTransactionSchema,
+    DepositWithdrawGoldSchema,
 } from 'artifactsmmo-sdk'
 import { getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
+import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
+import { PLAYER_FIVE } from './Character'
 
 const apiClient = getApiCLient()
 
@@ -18,61 +22,65 @@ export default class BasePlayer {
 
     constructor(character: CharacterSchema) {
         this.me = character
+        console.log(`${this.me.name} joined the game`)
     }
 
-    // Actions
-    goToForge() {
-        return this.moveTo(1, 5)
-    }
-    goToWoodcutting() {
-        return this.moveTo(-2, -3)
-    }
-    goToCopperRocks() {
-        return this.moveTo(2, 0)
-    }
-    goToWeaponCrafting() {
-        return this.moveTo(2, 1)
-    }
-    goToGearCrafting() {
-        return this.moveTo(3, 1)
-    }
-    goToJewelryCrafting() {
-        return this.moveTo(1, 3)
-    }
-    goToBank() {
-        return this.moveTo(4, 1)
+    async goToBuildingFor(skill: SkillEnum | 'bank' | 'monsters' | 'items' | 'grand_exchange') {
+        if (skill === 'fishing') skill = 'cooking'
+        const mapsWithWorkshop = await findMapsWithContent(skill)
+        const mapToGoTo = await getClosestMapFromDestination(mapsWithWorkshop, fromCoordinatesToDestination(this.me.x, this.me.y))
+        return this.moveTo(mapToGoTo.x, mapToGoTo.y)
     }
 
     // API calls
     async depositItem(itemName: string, quantity: number): Promise<void> {
-        console.log(`Deposit ${quantity} ${itemName} to bank`)
+        console.log(`${this.me.name}: Deposit ${quantity} ${itemName} to bank`)
         const depositSchema: SimpleItemSchema = { code: itemName, quantity: quantity }
         return await this.actionCallback((await apiClient.myCharacters.actionDepositBankMyNameActionBankDepositPost(this.me.name, depositSchema)).data.data)
     }
     async withdrawItem(itemName: string, quantity: number): Promise<void> {
-        console.log(`Withdraw ${quantity} ${itemName} from bank`)
+        console.log(`${this.me.name}: Withdraw ${quantity} ${itemName} from bank`)
         const withdrawSchema: SimpleItemSchema = { code: itemName, quantity: quantity }
         return await this.actionCallback((await apiClient.myCharacters.actionWithdrawBankMyNameActionBankWithdrawPost(this.me.name, withdrawSchema)).data.data)
     }
+    async depositGold(amountOfGold: number = -1): Promise<void> {
+        const toDeposit = amountOfGold < 0 ? this.me.gold : amountOfGold
+        if (toDeposit > 0) {
+            console.log(`${this.me.name}: Deposit ${toDeposit} gold to bank`)
+            const depositSchema: DepositWithdrawGoldSchema = { quantity: toDeposit }
+            return await this.actionCallback((await apiClient.myCharacters.actionDepositBankGoldMyNameActionBankDepositGoldPost(this.me.name, depositSchema)).data.data)
+        }
+    }
+    async withdrawGold(amountOfGold: number = -1): Promise<void> {
+        const toWithdraw = amountOfGold < 0 ? this.me.gold : amountOfGold
+        if (toWithdraw > 0) {
+            console.log(`${this.me.name}: Withdraw ${toWithdraw} gold to bank`)
+            const withdrawSchema: DepositWithdrawGoldSchema = { quantity: toWithdraw }
+            return await this.actionCallback((await apiClient.myCharacters.actionWithdrawBankGoldMyNameActionBankWithdrawGoldPost(this.me.name, withdrawSchema)).data.data)
+        }
+    }
     async fight(): Promise<void> {
-        console.log(`Fight`)
+        console.log(`${this.me.name}: Fight`)
+        if (this.me.name === PLAYER_FIVE) {
+            throw new Error(`${PLAYER_FIVE} should not fight anymore`)
+        }
         return await this.actionCallback((await apiClient.myCharacters.actionFightMyNameActionFightPost(this.me.name)).data.data)
     }
     async gather(): Promise<void> {
-        console.log(`Gather`)
+        console.log(`${this.me.name}: Gather`)
         return await this.actionCallback((await apiClient.myCharacters.actionGatheringMyNameActionGatheringPost(this.me.name)).data.data)
     }
     async craft(objectToCraft: string, quantity: number = 1): Promise<void> {
         const crafting: CraftingSchema = { code: objectToCraft, quantity: quantity }
-        console.log(`Craft ${objectToCraft} x${quantity}`)
+        console.log(`${this.me.name}: Craft ${objectToCraft} x${quantity}`)
         return await this.actionCallback((await apiClient.myCharacters.actionCraftingMyNameActionCraftingPost(this.me.name, crafting)).data.data)
     }
     async moveTo(x: number, y: number): Promise<void> {
         if (this.me.x === x && this.me.y === y) {
-            console.log(`Character is already at ${x}.${y}`)
+            console.log(`${this.me.name}: Character is already at ${x}.${y}`)
             return new Promise(resolve => setTimeout(resolve, 1))
         }
-        console.log(`Moving to ${x}.${y}`)
+        console.log(`${this.me.name}: Moving to ${x}.${y}`)
         return await this.actionCallback((await apiClient.myCharacters.actionMoveMyNameActionMovePost(this.me.name, fromCoordinatesToDestination(x, y))).data.data)
     }
 
@@ -80,7 +88,7 @@ export default class BasePlayer {
     updateCharacter(updatedCharacter: CharacterSchema): void {
         if (this.me.name === updatedCharacter.name) this.me = updatedCharacter
     }
-    async actionCallback(data: CharacterMovementDataSchema | CharacterFightDataSchema | SkillDataSchema | BankItemTransactionSchema): Promise<void> {
+    async actionCallback(data: CharacterMovementDataSchema | CharacterFightDataSchema | SkillDataSchema | BankItemTransactionSchema | BankGoldTransactionSchema): Promise<void> {
         if (data !== undefined) {
             this.updateCharacter(data.character)
             return waitForCooldown(data.cooldown)
@@ -95,9 +103,9 @@ export default class BasePlayer {
         })
     }
 
-    isInventoryFull(): boolean {
-        if (!this.me.inventory) return false
-        return this.me.inventory.reduce((acc, current) => acc + current.quantity, 0) >= this.me.inventory_max_items
+    getCurrentInventoryLevel(): number {
+        if (!this.me.inventory) return 0
+        return this.me.inventory.reduce((acc, current) => acc + current.quantity, 0)
     }
 
     getMyLevelOfSkill(skill: SkillEnum): number {

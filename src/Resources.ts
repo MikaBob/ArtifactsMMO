@@ -30,8 +30,8 @@ export const findResourceBySkill = async (skill: ResourceSchemaSkillEnum, skillL
     return resourcesDataPage.data[0]
 }
 
-export const findItemsBySkill = async (skill: CraftSchemaSkillEnum, skillLevel: number): Promise<ItemSchema[]> => {
-    const resourcesDataPage: DataPageItemSchema = (await apiClient.items.getAllItemsItemsGet(skillLevel, skillLevel, undefined, undefined, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
+export const findItemsBySkill = async (skill: CraftSchemaSkillEnum, minSkillLevel: number, maxSkillLevel: number): Promise<ItemSchema[]> => {
+    const resourcesDataPage: DataPageItemSchema = (await apiClient.items.getAllItemsItemsGet(minSkillLevel, maxSkillLevel, undefined, undefined, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
     return resourcesDataPage.data
 }
 

@@ -23,19 +23,19 @@ So far there are only 4 buttons for each cardinal directions. Guess what, "Move 
 
 # Todo
 
--   [ ] GUI
+-   [x] GUI (ended up to be useless)
 
     -   [x] Controls to move around
-    -   [ ] Do basic actions
-        -   [ ] Fight
-        -   [ ] Gather
-        -   [ ] Craft
-        -   [ ] Deposit / Withdraw
+    -   [x] Do basic actions
+        -   [x] Fight
+        -   [x] Gather
+        -   [x] Craft
+        -   ~~[ ] Deposit / Withdraw~~
 
 -   [ ] Init
     -   [x] Scan the map & save in DB
-    -   [ ] Retrieve bank details & save in DB
--   [ ] Create a loop to gather a resource (name & qty)
-    -   [ ] Using map in DB, look for the closest spot
-    -   [ ] Put resource to the bank
--   [ ] Create a loop to complete a task
+    -   [x] Retrieve bank details
+-   [x] Create a loop to gather a resource (name & qty)
+    -   [x] Using map in DB, look for the closest spot
+    -   [x] Put resource to the bank
+-   [x] Create a loop to complete a task
