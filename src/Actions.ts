@@ -1,20 +1,23 @@
 import {
-    BankItemTransactionSchema,
-    CharacterFightDataSchema,
-    CharacterMovementDataSchema,
     CharacterSchema,
     CraftingSchema,
     GetAllTasksTasksListGetSkillEnum as SkillEnum,
     SimpleItemSchema,
-    SkillDataSchema,
-    BankGoldTransactionSchema,
     DepositWithdrawGoldSchema,
+    CharacterMovementResponseSchema,
+    CharacterFightResponseSchema,
+    SkillResponseSchema,
+    BankItemTransactionResponseSchema,
+    BankGoldTransactionResponseSchema,
 } from 'artifactsmmo-sdk'
-import { getApiCLient } from './ApiClient'
+import { APIErrorType, getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
+import { ERROR_CODE_STILL_IN_COOLDOWN } from './Const'
 
 const apiClient = getApiCLient()
+
+type ActionCallbackResponse = Promise<void | number>
 
 export default class BasePlayer {
     protected me: CharacterSchema
@@ -28,78 +31,86 @@ export default class BasePlayer {
         if (skill === 'fishing') skill = 'cooking'
         const mapsWithWorkshop = await findMapsWithContent(skill)
         const mapToGoTo = await getClosestMapFromDestination(mapsWithWorkshop, fromCoordinatesToDestination(this.me.x, this.me.y))
-        return this.moveTo(mapToGoTo.x, mapToGoTo.y)
+        return await this.moveTo(mapToGoTo.x, mapToGoTo.y)
     }
 
     // API calls
-    async depositItem(itemName: string, quantity: number): Promise<void> {
+    async depositItem(itemName: string, quantity: number): ActionCallbackResponse {
         console.log(`${this.me.name}: Deposit ${quantity} ${itemName} to bank`)
         const depositSchema: SimpleItemSchema = { code: itemName, quantity: quantity }
-        return await this.actionCallback((await apiClient.myCharacters.actionDepositBankMyNameActionBankDepositPost(this.me.name, depositSchema)).data.data)
+        return await this.actionCallback((await apiClient.myCharacters.actionDepositBankMyNameActionBankDepositPost(this.me.name, depositSchema)).data)
     }
-    async withdrawItem(itemName: string, quantity: number): Promise<void> {
+    async withdrawItem(itemName: string, quantity: number): ActionCallbackResponse {
         console.log(`${this.me.name}: Withdraw ${quantity} ${itemName} from bank`)
         const withdrawSchema: SimpleItemSchema = { code: itemName, quantity: quantity }
-        return await this.actionCallback((await apiClient.myCharacters.actionWithdrawBankMyNameActionBankWithdrawPost(this.me.name, withdrawSchema)).data.data)
+        return await this.actionCallback((await apiClient.myCharacters.actionWithdrawBankMyNameActionBankWithdrawPost(this.me.name, withdrawSchema)).data)
     }
-    async depositGold(amountOfGold: number = -1): Promise<void> {
+    async depositGold(amountOfGold: number = -1): ActionCallbackResponse {
         const toDeposit = amountOfGold < 0 ? this.me.gold : amountOfGold
         if (toDeposit > 0) {
             console.log(`${this.me.name}: Deposit ${toDeposit} gold to bank`)
             const depositSchema: DepositWithdrawGoldSchema = { quantity: toDeposit }
-            return await this.actionCallback((await apiClient.myCharacters.actionDepositBankGoldMyNameActionBankDepositGoldPost(this.me.name, depositSchema)).data.data)
+            return await this.actionCallback((await apiClient.myCharacters.actionDepositBankGoldMyNameActionBankDepositGoldPost(this.me.name, depositSchema)).data)
         }
     }
-    async withdrawGold(amountOfGold: number = -1): Promise<void> {
+    async withdrawGold(amountOfGold: number = -1): ActionCallbackResponse {
         const toWithdraw = amountOfGold < 0 ? this.me.gold : amountOfGold
         if (toWithdraw > 0) {
             console.log(`${this.me.name}: Withdraw ${toWithdraw} gold to bank`)
             const withdrawSchema: DepositWithdrawGoldSchema = { quantity: toWithdraw }
-            return await this.actionCallback((await apiClient.myCharacters.actionWithdrawBankGoldMyNameActionBankWithdrawGoldPost(this.me.name, withdrawSchema)).data.data)
+            return await this.actionCallback((await apiClient.myCharacters.actionWithdrawBankGoldMyNameActionBankWithdrawGoldPost(this.me.name, withdrawSchema)).data)
         }
     }
-    async fight(): Promise<void> {
+    async fight(): ActionCallbackResponse {
         console.log(`${this.me.name}: Fight`)
         if (this.me.name === 'Chief' && this.me.level >= 10) {
             throw new Error(`${this.me.name} should not fight anymore`)
         }
-        return await this.actionCallback((await apiClient.myCharacters.actionFightMyNameActionFightPost(this.me.name)).data.data)
+        return await this.actionCallback((await apiClient.myCharacters.actionFightMyNameActionFightPost(this.me.name)).data)
     }
-    async gather(): Promise<void> {
+    async gather(): ActionCallbackResponse {
         console.log(`${this.me.name}: Gather`)
-        return await this.actionCallback((await apiClient.myCharacters.actionGatheringMyNameActionGatheringPost(this.me.name)).data.data)
+        return await this.actionCallback((await apiClient.myCharacters.actionGatheringMyNameActionGatheringPost(this.me.name)).data)
     }
-    async craft(objectToCraft: string, quantity: number = 1): Promise<void> {
+    async craft(objectToCraft: string, quantity: number = 1): ActionCallbackResponse {
         const crafting: CraftingSchema = { code: objectToCraft, quantity: quantity }
         console.log(`${this.me.name}: Craft ${objectToCraft} x${quantity}`)
-        return await this.actionCallback((await apiClient.myCharacters.actionCraftingMyNameActionCraftingPost(this.me.name, crafting)).data.data)
+        return await this.actionCallback((await apiClient.myCharacters.actionCraftingMyNameActionCraftingPost(this.me.name, crafting)).data)
     }
-    async moveTo(x: number, y: number): Promise<void> {
+    async moveTo(x: number, y: number): ActionCallbackResponse {
         if (this.me.x === x && this.me.y === y) {
             console.log(`${this.me.name}: Character is already at ${x}.${y}`)
-            return new Promise(resolve => setTimeout(resolve, 1))
+            return new Promise(resolve => setTimeout(resolve, 1000))
         }
+
         console.log(`${this.me.name}: Moving to ${x}.${y}`)
-        return await this.actionCallback((await apiClient.myCharacters.actionMoveMyNameActionMovePost(this.me.name, fromCoordinatesToDestination(x, y))).data.data)
+        return await this.actionCallback((await apiClient.myCharacters.actionMoveMyNameActionMovePost(this.me.name, fromCoordinatesToDestination(x, y))).data).catch(async (errorCode: number) => {
+            switch (errorCode) {
+                case ERROR_CODE_STILL_IN_COOLDOWN:
+                    console.log('2nd attempt after cooldown')
+                    await this.moveTo(x, y)
+                    break
+            }
+        })
     }
 
     // Utils
     updateCharacter(updatedCharacter: CharacterSchema): void {
         if (this.me.name === updatedCharacter.name) this.me = updatedCharacter
     }
-    async actionCallback(data: CharacterMovementDataSchema | CharacterFightDataSchema | SkillDataSchema | BankItemTransactionSchema | BankGoldTransactionSchema): Promise<void> {
-        if (data !== undefined) {
-            this.updateCharacter(data.character)
-            return waitForCooldown(data.cooldown)
+
+    async actionCallback(
+        actionResponse: CharacterMovementResponseSchema | CharacterFightResponseSchema | SkillResponseSchema | BankItemTransactionResponseSchema | BankGoldTransactionResponseSchema | APIErrorType,
+    ): ActionCallbackResponse {
+        if (actionResponse.data !== undefined) {
+            this.updateCharacter(actionResponse.data.character)
+            return waitForCooldown(actionResponse.data.cooldown)
         }
-        const now = Date.now()
-        return waitForCooldown({
-            reason: 'unequip',
-            remaining_seconds: 5,
-            total_seconds: 5,
-            started_at: new Date(now).toISOString(),
-            expiration: new Date(now + 5000).toISOString(),
-        })
+        return Promise.reject<number>(actionResponse.code)
+    }
+
+    async handleActionErrorNotFound(x: number, y: number) {
+        return await this.moveTo(x, y)
     }
 
     getCurrentInventoryLevel(): number {

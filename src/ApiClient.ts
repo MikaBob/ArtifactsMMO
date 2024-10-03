@@ -17,6 +17,7 @@ import {
     TasksApi,
     TokenApi,
 } from 'artifactsmmo-sdk'
+import { ERROR_CODE_STILL_IN_COOLDOWN } from './Const.js'
 
 const ARTIFACTSMMO_API_ENDPOINT = 'https://api.artifactsmmo.com'
 
@@ -37,6 +38,12 @@ type APITypes = {
     token: TokenApi
 }
 
+export type APIErrorType = {
+    code: number
+    message: string
+    data: undefined
+}
+
 let APIClient: APITypes | null = null
 
 const init = () => {
@@ -48,22 +55,25 @@ const init = () => {
         },
         // retry logic for 499 rate-limit errors
         async error => {
-            const apiError = error.response?.data?.error
+            const apiError: APIErrorType | undefined = error.response?.data?.error
             if (error.response !== undefined) {
                 const { method, url, data } = error.response.config
                 console.error(`API error ${method.toUpperCase()} ${url} ${data ?? ''}`, apiError)
+            } else {
+                console.error(error)
             }
-            if (error.response?.status === 499) {
-                const retryAfter = error.response.headers['retry-after'] ?? 2
+            if (apiError?.code === ERROR_CODE_STILL_IN_COOLDOWN) {
+                const regexResult = /(\d+\.\d+) seconds.+/.exec(apiError.message ?? '')
+                const retryAfter = regexResult !== null ? parseInt(regexResult[1]) + 1 : 3
 
+                console.log(`Waiting for ${retryAfter}sec before re-trying request`)
                 await new Promise(resolve => {
                     setTimeout(resolve, retryAfter * 1000)
                 })
-
                 return instance.request(error.config)
             }
 
-            return { data: { data: undefined } }
+            return { data: apiError }
         },
     )
 

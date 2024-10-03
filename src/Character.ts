@@ -33,6 +33,7 @@ export type CraftAction = {
 export type FightAction = {
     actionType: 'fight'
     actionName: string
+    amount?: number
 }
 
 export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
@@ -40,47 +41,97 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
         case 'Swidz':
             return [
                 {
-                    actionType: 'craft',
-                    actionName: 'mining',
-                    level: 10,
+                    actionType: 'fight',
+                    actionName: 'skeleton',
                 },
                 {
                     actionType: 'gather',
-                    actionName: 'mining',
+                    actionName: 'woodcutting',
                     level: 10,
+                },
+                {
+                    actionType: 'craft',
+                    actionName: 'woodcutting',
+                    level: 10,
+                },
+
+                {
+                    actionType: 'fight',
+                    actionName: 'blue_slime',
                 },
             ]
         case 'Nolie':
+            return [
+                {
+                    actionType: 'craft',
+                    actionName: 'gearcrafting',
+                },
+                {
+                    actionType: 'craft',
+                    actionName: 'gearcrafting',
+                },
+                {
+                    actionType: 'craft',
+                    actionName: 'gearcrafting',
+                },
+                {
+                    actionType: 'fight',
+                    actionName: 'blue_slime',
+                },
+                {
+                    actionType: 'fight',
+                    actionName: 'cow',
+                },
+            ]
         case 'Blargh':
             return [
                 {
                     actionType: 'fight',
                     actionName: 'cow',
                 },
-            ]
-        case 'Niebieska':
-            return [
                 {
-                    actionType: 'craft',
-                    actionName: 'jewelrycrafting',
+                    actionType: 'gather',
+                    actionName: 'mining',
+                    level: 10,
                 },
                 {
                     actionType: 'craft',
                     actionName: 'mining',
-                    level: 1,
+                    level: 10,
+                },
+                {
+                    actionType: 'fight',
+                    actionName: 'skeleton',
+                },
+            ]
+        case 'Niebieska':
+            return [
+                {
+                    actionType: 'fight',
+                    actionName: 'cow',
+                },
+                {
+                    actionType: 'craft',
+                    actionName: 'jewelrycrafting',
+                    level: 10,
                 },
                 {
                     actionType: 'gather',
                     actionName: 'mining',
                     level: 10,
                 },
+                {
+                    actionType: 'craft',
+                    actionName: 'mining',
+                    level: 10,
+                },
+                {
+                    actionType: 'fight',
+                    actionName: 'blue_slime',
+                },
             ]
         case 'Chief':
             return [
-                {
-                    actionType: 'craft',
-                    actionName: 'cooking',
-                },
                 {
                     actionType: 'gather',
                     actionName: 'fishing',

@@ -17,11 +17,12 @@ export default class Player extends BasePlayer {
 
             await this.moveTo(mapToGatherResource.x, mapToGatherResource.y)
             while (this.getCurrentInventoryLevel() < this.me.inventory_max_items) {
-                await this.gather()
+                await this.gather().catch(async () => {
+                    await this.handleActionErrorNotFound(mapToGatherResource.x, mapToGatherResource.y)
+                })
             }
             console.log(`${this.me.name}: Inventory full`)
-            await Promise.allSettled([this.emptyInventoryInBank()])
-            resolve()
+            await this.emptyInventoryInBank().then(resolve)
         })
     }
 
@@ -30,29 +31,43 @@ export default class Player extends BasePlayer {
             if (craftLevel < 0) craftLevel = this.getMyLevelOfSkill(craftSkill)
             const minCraftLevel = getLowestTenOfLevel(craftLevel)
             console.log(`${this.me.name}: Try action craft item ${craftSkill}, from ${minCraftLevel} to ${craftLevel}`)
-            const possibleCrafts = await findItemsBySkill(craftSkill, minCraftLevel, craftLevel)
+            const craftsOfThatLevel = await findItemsBySkill(craftSkill, minCraftLevel, craftLevel)
             const itemsInBank = await getItemsInBank()
 
-            let craftToDo: ItemSchema | undefined
-            possibleCrafts.forEach(possibleCraft => {
+            const possibleCrafts: PossibleCraft[] = []
+            craftsOfThatLevel.forEach(craftOfThatLevel => {
                 let isPossibleToCraft = true
-                if (possibleCraft.craft === undefined || possibleCraft.craft === null || possibleCraft.craft.items === undefined) return
-                possibleCraft.craft.items.forEach(itemRequiredForCraft => {
+                if (craftOfThatLevel.craft === undefined || craftOfThatLevel.craft === null || craftOfThatLevel.craft.items === undefined) return
+                let quantityOfResourceToSpend = 0
+                craftOfThatLevel.craft.items.forEach(itemRequiredForCraft => {
+                    quantityOfResourceToSpend += itemRequiredForCraft.quantity
                     let itemsPresentInBank = false
                     itemsInBank.forEach(itemInBank => {
                         if (itemRequiredForCraft.code === itemInBank.code && itemRequiredForCraft.quantity <= itemInBank.quantity) itemsPresentInBank = true
                     })
                     if (!itemsPresentInBank) isPossibleToCraft = false
                 })
-                if (isPossibleToCraft) craftToDo = possibleCraft
+                if (isPossibleToCraft) possibleCrafts.push({ ...craftOfThatLevel, total_resources_to_spend: quantityOfResourceToSpend })
             })
 
-            if (craftToDo === undefined || craftToDo.craft === undefined || craftToDo.craft === null || craftToDo.craft.items === undefined) {
-                console.log(`${this.me.name}: No possible craft found among`, possibleCrafts)
+            if (possibleCrafts.length < 1) {
+                console.log(`${this.me.name}: No possible craft found among`, craftsOfThatLevel)
                 resolve()
                 return
             }
-            console.log(`${this.me.name}: Possible craft found`, craftToDo, craftToDo.craft.items)
+
+            let craftToDo: PossibleCraft = possibleCrafts[0]
+            possibleCrafts.forEach(possibleCraft => {
+                if (craftToDo.total_resources_to_spend > possibleCraft.total_resources_to_spend) craftToDo = possibleCraft
+            })
+
+            if (craftToDo.craft === undefined || craftToDo.craft === null || craftToDo.craft.items === undefined) {
+                console.log(`${craftToDo.code} does not have craft recipes ?`, craftToDo)
+                resolve()
+                return
+            }
+
+            console.log(`${this.me.name}: Let's craft `, craftToDo.code, craftToDo.craft.items)
 
             await Promise.allSettled([this.emptyInventoryInBank()])
             let inventoryCapacity = this.me.inventory_max_items - this.getCurrentInventoryLevel()
@@ -83,12 +98,11 @@ export default class Player extends BasePlayer {
             console.log(`${this.me.name}: Start crafting  '${craftToDo.name}' x${amountOfCrafts}`)
             await this.craft(craftToDo.code, amountOfCrafts)
             console.log(`${this.me.name}: Crafting done`)
-            await Promise.allSettled([this.emptyInventoryInBank()])
-            resolve()
+            await this.emptyInventoryInBank().then(resolve)
         })
     }
 
-    fightMonster(monsterName: string) {
+    fightMonster(monsterName: string, amountOfKillToDO: number = 300) {
         return new Promise<void>(async resolve => {
             console.log(`${this.me.name}: Try action fight monster ${monsterName}`)
             const mapsWhereMonsterIsPresent = await findMapsWithContent(monsterName)
@@ -96,25 +110,53 @@ export default class Player extends BasePlayer {
             console.log(`${this.me.name}: Start fighting '${monsterName}' at ${mapToFight._id}`)
 
             await this.moveTo(mapToFight.x, mapToFight.y)
-            while (this.getCurrentInventoryLevel() < this.me.inventory_max_items) {
-                await this.fight()
+            let bodyCount = 0
+            while (this.getCurrentInventoryLevel() < this.me.inventory_max_items / 2 && bodyCount < amountOfKillToDO) {
+                await Promise.allSettled([
+                    this.fight()
+                        .catch(async () => {
+                            await this.handleActionErrorNotFound(mapToFight.x, mapToFight.y)
+                        })
+                        .then(() => {
+                            bodyCount++
+                        }),
+                ])
             }
             console.log(`${this.me.name}: Inventory full`)
-            await Promise.allSettled([this.emptyInventoryInBank()])
-            resolve()
+            await this.emptyInventoryInBank().then(resolve)
         })
     }
 
     emptyInventoryInBank() {
-        const itemToKeep = ['golden_egg', 'golden_shrimp', 'emerald', 'topaz', 'ruby', 'sapphire', 'tasks_coin', 'iron_pickaxe', 'iron_axe', 'iron_sword', 'iron_dagger', 'fire_bow']
+        const itemToKeep = [
+            'golden_egg',
+            'golden_shrimp',
+            'emerald',
+            'topaz',
+            'ruby',
+            'sapphire',
+            'iron_pickaxe',
+            'iron_axe',
+            'iron_sword',
+            'iron_dagger',
+            'fire_bow',
+            'greater_wooden_staff',
+            'mushstaff',
+            'mushmush_bow',
+        ]
         return new Promise<void>(async resolve => {
             console.log(`${this.me.name}: Start emptying inventory in bank`)
             await this.goToBuildingFor('bank')
             if (!this.me.inventory) return
             for (const item of this.me.inventory) {
-                if (item.quantity > 0 && itemToKeep.indexOf(item.code) === -1) await this.depositItem(item.code, item.quantity)
+                if (item.quantity > 0 && itemToKeep.indexOf(item.code) === -1)
+                    await this.depositItem(item.code, item.quantity).catch(async () => {
+                        await this.handleActionErrorNotFound(4, 1)
+                    })
             }
-            await this.depositGold()
+            await this.depositGold().catch(async () => {
+                await this.handleActionErrorNotFound(4, 1)
+            })
             resolve()
         })
     }
@@ -123,3 +165,5 @@ export default class Player extends BasePlayer {
         return this.me
     }
 }
+
+type PossibleCraft = ItemSchema & { total_resources_to_spend: number }

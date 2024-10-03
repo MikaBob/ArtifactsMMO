@@ -8,9 +8,9 @@ export const main = async () => {
     const player = new Player(await getCharacterByName(playerName))
 
     Promise.resolve().then(async function resolver(): Promise<void> {
-        const actionsToDo = getCharacterActions(player.getStats().name)
-        for (let i = 0; i < actionsToDo.length; i++) {
-            try {
+        try {
+            const actionsToDo = getCharacterActions(player.getStats().name)
+            for (let i = 0; i < actionsToDo.length; i++) {
                 if (actionsToDo[i].actionType === 'craft') {
                     const craftAction = actionsToDo[i] as CraftAction
                     await player.craftItems(craftAction.actionName, craftAction.level)
@@ -19,16 +19,18 @@ export const main = async () => {
                     await player.gatherResource(gathrerAction.actionName, gathrerAction.level)
                 } else if (actionsToDo[i].actionType === 'fight') {
                     const fightAction = actionsToDo[i] as FightAction
-                    await player.fightMonster(fightAction.actionName)
+                    await player.fightMonster(fightAction.actionName, fightAction.amount)
                 }
-            } catch (error) {
-                console.error(error)
             }
+        } catch (error) {
+            console.error(error)
+        } finally {
+            resolver()
         }
-        resolver()
     })
 
     // Game Over
 }
 
+if (process.argv[2] === undefined) throw new Error('Missing parameter: Character name')
 main()
