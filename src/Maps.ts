@@ -1,6 +1,8 @@
 import { DataPageMapSchema, DestinationSchema, MapSchema } from 'artifactsmmo-sdk'
 import { getApiCLient } from './ApiClient'
-import { MapDocument } from './db/models/MapDocument'
+import { COLLECTION_NAME_FOR_MAPS, MapDocument } from './db/models/MapDocument'
+import { Db } from 'mongodb'
+import { connectToMongo } from './db/dbDriver'
 
 const MAX_MAP_PAGE_SIZE = 100
 const apiClient = getApiCLient()
@@ -26,9 +28,8 @@ export const syncMaps = async () => {
 }
 
 export const findMapsWithContent = async (contentToSearch: string): Promise<MapDocument[]> => {
-    const spawnMap: MapSchema = (await apiClient.maps.getMapMapsXYGet(0, 0)).data.data
-    const mapDocument = new MapDocument(spawnMap)
-    return await mapDocument.findByContentCode(contentToSearch)
+    const dbClient: Db = await connectToMongo()
+    return await dbClient.collection<MapDocument>(COLLECTION_NAME_FOR_MAPS).find({ 'content.code': contentToSearch }).toArray()
 }
 
 export const getClosestMapFromDestination = async (mapsHaystack: MapDocument[], destination: DestinationSchema): Promise<MapDocument> => {

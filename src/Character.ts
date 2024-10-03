@@ -75,8 +75,13 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     actionName: 'gearcrafting',
                 },
                 {
+                    actionType: 'craft',
+                    actionName: 'gearcrafting',
+                },
+                {
                     actionType: 'fight',
-                    actionName: 'blue_slime',
+                    actionName: 'chicken',
+                    amount: 399,
                 },
                 {
                     actionType: 'fight',
@@ -85,10 +90,6 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
             ]
         case 'Blargh':
             return [
-                {
-                    actionType: 'fight',
-                    actionName: 'cow',
-                },
                 {
                     actionType: 'gather',
                     actionName: 'mining',
@@ -103,17 +104,22 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     actionType: 'fight',
                     actionName: 'skeleton',
                 },
-            ]
-        case 'Niebieska':
-            return [
                 {
                     actionType: 'fight',
                     actionName: 'cow',
                 },
+            ]
+        case 'Niebieska':
+            return [
                 {
                     actionType: 'craft',
                     actionName: 'jewelrycrafting',
                     level: 10,
+                },
+                {
+                    actionType: 'fight',
+                    actionName: 'yellow_slime',
+                    amount: 131,
                 },
                 {
                     actionType: 'gather',
@@ -124,10 +130,6 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     actionType: 'craft',
                     actionName: 'mining',
                     level: 10,
-                },
-                {
-                    actionType: 'fight',
-                    actionName: 'blue_slime',
                 },
             ]
         case 'Chief':

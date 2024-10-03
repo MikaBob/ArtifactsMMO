@@ -1,6 +1,8 @@
-import { CraftSchemaSkillEnum, DataPageItemSchema, DataPageResourceSchema, ItemSchema, ResourceSchema, ResourceSchemaSkillEnum, SimpleItemSchema } from 'artifactsmmo-sdk'
+import { DataPageResourceSchema, ResourceSchema, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
 import { getApiCLient } from './ApiClient'
-import { ResourceDocument } from './db/models/ResourceDocument'
+import { COLLECTION_NAME_FOR_RESOURCES, ResourceDocument } from './db/models/ResourceDocument'
+import { Db } from 'mongodb'
+import { connectToMongo } from './db/dbDriver'
 
 const MAX_RESOURCES_PAGE_SIZE = 100
 const apiClient = getApiCLient()
@@ -25,21 +27,7 @@ export const syncResources = async (): Promise<void> => {
     console.log('Resources sync done')
 }
 
-export const findResourceBySkill = async (skill: ResourceSchemaSkillEnum, skillLevel: number): Promise<ResourceSchema> => {
-    const resourcesDataPage: DataPageResourceSchema = (await apiClient.resources.getAllResourcesResourcesGet(skillLevel, skillLevel, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
-    return parsePagingResult(resourcesDataPage.data[0])
-}
-
-export const findItemsBySkill = async (skill: CraftSchemaSkillEnum, minSkillLevel: number, maxSkillLevel: number): Promise<ItemSchema[]> => {
-    const resourcesDataPage: DataPageItemSchema = (await apiClient.items.getAllItemsItemsGet(minSkillLevel, maxSkillLevel, undefined, undefined, skill, undefined, 1, MAX_RESOURCES_PAGE_SIZE)).data
-    return parsePagingResult(resourcesDataPage.data)
-}
-
-export const getItemsInBank = async (): Promise<SimpleItemSchema[]> => {
-    const items = (await apiClient.myAccount.getBankItemsMyBankItemsGet(undefined, 1, 100)).data
-    return parsePagingResult(items.data)
-}
-
-const parsePagingResult = <Array>(data: Array): Array => {
-    return data === null || data === undefined ? ([] as Array) : data
+export const findResourceBySkill = async (skill: ResourceSchemaSkillEnum, skillLevel: number): Promise<ResourceSchema[]> => {
+    const dbClient: Db = await connectToMongo()
+    return await dbClient.collection<ResourceSchema>(COLLECTION_NAME_FOR_RESOURCES).find({ level: skillLevel, skill: skill }).toArray()
 }

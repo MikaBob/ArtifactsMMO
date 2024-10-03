@@ -1,7 +1,7 @@
 import { DropRateSchema, ResourceSchema, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
 import { MongoDBDocument } from './MongoDBDocument'
 
-const COLLECTION_NAME_FOR_RESOURCES = 'resources'
+export const COLLECTION_NAME_FOR_RESOURCES = 'resources'
 
 export type ResourceQuery = {
     drops: Array<DropRateSchema>

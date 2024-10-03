@@ -1,20 +1,32 @@
 /* eslint-disable no-async-promise-executor */
-import { CraftSchemaSkillEnum, ItemSchema, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
+import { CraftSchemaSkillEnum, InventorySlot, ItemEffectSchema, ItemSchema, MonsterSchema, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
 import BasePlayer from './Actions'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
-import { findItemsBySkill, findResourceBySkill, getItemsInBank } from './Resources'
+import { findResourceBySkill } from './Resources'
 import { fromCoordinatesToDestination, getLowestTenOfLevel } from './Utils'
+import { resolve } from 'path'
+import { findItemsBySkill, findItemsByType, getItemsInBank } from './Items'
+import { findMonsterByName } from './Monsters'
+import { ERROR_CODE_STILL_IN_COOLDOWN, ERROR_CODE_SLOT_EMPTY } from './Const'
 
 export default class Player extends BasePlayer {
     gatherResource(resourceSkill: ResourceSchemaSkillEnum, resourceLevel: number = -1) {
         return new Promise<void>(async resolve => {
             if (resourceLevel < 0) resourceLevel = getLowestTenOfLevel(this.getMyLevelOfSkill(resourceSkill))
             console.log(`${this.me.name}: Try action gather resource ${resourceSkill} of level ${resourceLevel}`)
-            const resourceToGather = await findResourceBySkill(resourceSkill, resourceLevel)
+            const resourceToGather = (await findResourceBySkill(resourceSkill, resourceLevel))[0] ?? null
+            if (resourceToGather === null) {
+                console.error(`Could not find resource ${resourceToGather} in DB`)
+                resolve()
+                return
+            }
+
             const mapsWhereResourceIsPresent = await findMapsWithContent(resourceToGather.code)
             const mapToGatherResource = await getClosestMapFromDestination(mapsWhereResourceIsPresent, fromCoordinatesToDestination(this.me.x, this.me.y))
             console.log(`${this.me.name}: Start gathering resource '${resourceToGather.name}' at ${mapToGatherResource._id}`)
 
+            await this.emptyInventoryInBank()
+            await this.changeWeaponForTool(resourceSkill)
             await this.moveTo(mapToGatherResource.x, mapToGatherResource.y)
             while (this.getCurrentInventoryLevel() < this.me.inventory_max_items) {
                 await this.gather().catch(async () => {
@@ -69,7 +81,7 @@ export default class Player extends BasePlayer {
 
             console.log(`${this.me.name}: Let's craft `, craftToDo.code, craftToDo.craft.items)
 
-            await Promise.allSettled([this.emptyInventoryInBank()])
+            await this.emptyInventoryInBank()
             let inventoryCapacity = this.me.inventory_max_items - this.getCurrentInventoryLevel()
             let amountOfCrafts = 0
             let hasBankNoMoreItem = false
@@ -96,7 +108,18 @@ export default class Player extends BasePlayer {
             if (craftToDo.craft.skill === undefined) return
             await this.goToBuildingFor(craftToDo.craft.skill)
             console.log(`${this.me.name}: Start crafting  '${craftToDo.name}' x${amountOfCrafts}`)
-            await this.craft(craftToDo.code, amountOfCrafts)
+            await this.craft(craftToDo.code, amountOfCrafts).catch(async (errorCode: number) => {
+                switch (errorCode) {
+                    case ERROR_CODE_STILL_IN_COOLDOWN:
+                        console.log('2nd attempt after cooldown')
+                        await this.craft(craftToDo.code, amountOfCrafts)
+                        break
+                    case ERROR_CODE_SLOT_EMPTY:
+                        break
+                    default:
+                        return Promise.reject()
+                }
+            })
             console.log(`${this.me.name}: Crafting done`)
             await this.emptyInventoryInBank().then(resolve)
         })
@@ -107,20 +130,25 @@ export default class Player extends BasePlayer {
             console.log(`${this.me.name}: Try action fight monster ${monsterName}`)
             const mapsWhereMonsterIsPresent = await findMapsWithContent(monsterName)
             const mapToFight = await getClosestMapFromDestination(mapsWhereMonsterIsPresent, fromCoordinatesToDestination(this.me.x, this.me.y))
-            console.log(`${this.me.name}: Start fighting '${monsterName}' at ${mapToFight._id}`)
+            const monsterToFight = (await findMonsterByName(monsterName))[0] ?? null
+            if (monsterToFight === null) {
+                console.error(`Could not find monster ${monsterName} in DB`)
+                resolve()
+                return
+            }
 
+            console.log(`${this.me.name}: Start fighting '${monsterToFight.name}' at ${mapToFight._id}`)
+            await this.changeEquipementForMonster(monsterToFight)
             await this.moveTo(mapToFight.x, mapToFight.y)
             let bodyCount = 0
             while (this.getCurrentInventoryLevel() < this.me.inventory_max_items / 2 && bodyCount < amountOfKillToDO) {
-                await Promise.allSettled([
-                    this.fight()
-                        .catch(async () => {
-                            await this.handleActionErrorNotFound(mapToFight.x, mapToFight.y)
-                        })
-                        .then(() => {
-                            bodyCount++
-                        }),
-                ])
+                await this.fight()
+                    .catch(async () => {
+                        await this.handleActionErrorNotFound(mapToFight.x, mapToFight.y)
+                    })
+                    .then(() => {
+                        bodyCount++
+                    })
             }
             console.log(`${this.me.name}: Inventory full`)
             await this.emptyInventoryInBank().then(resolve)
@@ -136,7 +164,11 @@ export default class Player extends BasePlayer {
             'ruby',
             'sapphire',
             'iron_pickaxe',
+            'gold_pickaxe',
             'iron_axe',
+            'gold_axe',
+            'spruce_fishing_rod',
+            'gold_fishing_rod',
             'iron_sword',
             'iron_dagger',
             'fire_bow',
@@ -159,6 +191,72 @@ export default class Player extends BasePlayer {
             })
             resolve()
         })
+    }
+
+    async changeWeaponForTool(resourceSkill: ResourceSchemaSkillEnum) {
+        let bestWeapon: string | null = null
+        switch (resourceSkill) {
+            case 'mining':
+                bestWeapon = this.hasItemInInventory('gold_pickaxe') ? 'gold_pickaxe' : this.hasItemInInventory('iron_pickaxe') ? 'iron_pickaxe' : null
+                break
+            case 'woodcutting':
+                bestWeapon = this.hasItemInInventory('gold_axe') ? 'gold_axe' : this.hasItemInInventory('iron_axe') ? 'iron_axe' : null
+                break
+            case 'fishing':
+                bestWeapon = this.hasItemInInventory('gold_fishing_rod') ? 'gold_fishing_rod' : this.hasItemInInventory('spruce_fishing_rod') ? 'spruce_fishing_rod' : null
+                break
+        }
+        if (bestWeapon !== null) {
+            await this.unequip('weapon')
+            await this.equip(bestWeapon, 'weapon')
+        }
+    }
+
+    async changeEquipementForMonster(monster: MonsterSchema) {
+        await this.unequip('weapon')
+        // Weapon
+        const listOfAvailableWeapons: ItemSchema[] = []
+        const allGameWeapons = await findItemsByType('weapon')
+
+        // InventorySlot does not provide the item type. We don't know which slots are weapons
+        // hence filtering through all games' weapons
+        this.me.inventory?.forEach((slot: InventorySlot) => {
+            allGameWeapons.forEach((weapon: ItemSchema) => {
+                if (weapon.code === slot.code) {
+                    listOfAvailableWeapons.push(weapon)
+                }
+            })
+        })
+
+        if (listOfAvailableWeapons.length < 1) {
+            console.log(`${this.me.name}: No weapon found in inventory`, listOfAvailableWeapons)
+            resolve()
+            return
+        }
+
+        let bestWeapon: ItemSchema & { total_damage: number } = { ...listOfAvailableWeapons[0], total_damage: 0 }
+        listOfAvailableWeapons.forEach((weapon: ItemSchema) => {
+            let totalWeaponDamage = 0
+            weapon.effects?.forEach((weaponEffect: ItemEffectSchema) => {
+                switch (weaponEffect.name) {
+                    case 'attack_fire':
+                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_fire / 100)
+                        break
+                    case 'attack_water':
+                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_water / 100)
+                        break
+                    case 'attack_earth':
+                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_earth / 100)
+                        break
+                    case 'attack_air':
+                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_air / 100)
+                        break
+                }
+            })
+            bestWeapon = bestWeapon.total_damage < totalWeaponDamage ? { ...weapon, total_damage: totalWeaponDamage } : bestWeapon
+        })
+
+        await this.equip(bestWeapon.code, 'weapon')
     }
 
     getStats() {

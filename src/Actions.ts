@@ -9,11 +9,17 @@ import {
     SkillResponseSchema,
     BankItemTransactionResponseSchema,
     BankGoldTransactionResponseSchema,
+    UnequipSchema,
+    UnequipSchemaSlotEnum,
+    EquipmentResponseSchema,
+    EquipSchema,
+    EquipSchemaSlotEnum,
+    InventorySlot,
 } from 'artifactsmmo-sdk'
 import { APIErrorType, getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
-import { ERROR_CODE_STILL_IN_COOLDOWN } from './Const'
+import { ERROR_CODE_SLOT_EMPTY, ERROR_CODE_STILL_IN_COOLDOWN } from './Const'
 
 const apiClient = getApiCLient()
 
@@ -77,6 +83,28 @@ export default class BasePlayer {
         console.log(`${this.me.name}: Craft ${objectToCraft} x${quantity}`)
         return await this.actionCallback((await apiClient.myCharacters.actionCraftingMyNameActionCraftingPost(this.me.name, crafting)).data)
     }
+    async unequip(slotName: UnequipSchemaSlotEnum): ActionCallbackResponse {
+        console.log(`${this.me.name}: Unequip ${slotName}`)
+        const unequip: UnequipSchema = { slot: slotName }
+        return await this.actionCallback((await apiClient.myCharacters.actionUnequipItemMyNameActionUnequipPost(this.me.name, unequip)).data).catch(async (errorCode: number) => {
+            switch (errorCode) {
+                case ERROR_CODE_STILL_IN_COOLDOWN:
+                    console.log('2nd attempt after cooldown')
+                    await this.unequip(slotName)
+                    break
+                case ERROR_CODE_SLOT_EMPTY:
+                    break
+                default:
+                    return Promise.reject()
+            }
+        })
+    }
+
+    async equip(itemCode: string, slotName: EquipSchemaSlotEnum): ActionCallbackResponse {
+        console.log(`${this.me.name}: Equip ${itemCode} as ${slotName}`)
+        const equip: EquipSchema = { code: itemCode, slot: slotName }
+        return await this.actionCallback((await apiClient.myCharacters.actionEquipItemMyNameActionEquipPost(this.me.name, equip)).data)
+    }
     async moveTo(x: number, y: number): ActionCallbackResponse {
         if (this.me.x === x && this.me.y === y) {
             console.log(`${this.me.name}: Character is already at ${x}.${y}`)
@@ -100,7 +128,14 @@ export default class BasePlayer {
     }
 
     async actionCallback(
-        actionResponse: CharacterMovementResponseSchema | CharacterFightResponseSchema | SkillResponseSchema | BankItemTransactionResponseSchema | BankGoldTransactionResponseSchema | APIErrorType,
+        actionResponse:
+            | CharacterMovementResponseSchema
+            | CharacterFightResponseSchema
+            | SkillResponseSchema
+            | BankItemTransactionResponseSchema
+            | BankGoldTransactionResponseSchema
+            | EquipmentResponseSchema
+            | APIErrorType,
     ): ActionCallbackResponse {
         if (actionResponse.data !== undefined) {
             this.updateCharacter(actionResponse.data.character)
@@ -116,6 +151,14 @@ export default class BasePlayer {
     getCurrentInventoryLevel(): number {
         if (!this.me.inventory) return 0
         return this.me.inventory.reduce((acc, current) => acc + current.quantity, 0)
+    }
+
+    hasItemInInventory(itemName: string): boolean {
+        let hasItemInInventory = false
+        this.me.inventory?.forEach((slot: InventorySlot) => {
+            if (slot.code === itemName) hasItemInInventory = true
+        })
+        return hasItemInInventory
     }
 
     getMyLevelOfSkill(skill: SkillEnum): number {
