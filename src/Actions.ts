@@ -19,7 +19,7 @@ import {
 import { APIErrorType, getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
-import { ERROR_CODE_SLOT_EMPTY, ERROR_CODE_STILL_IN_COOLDOWN } from './Const'
+import { ERROR_CODE_NOT_FOUND, ERROR_CODE_SLOT_EMPTY, ERROR_CODE_STILL_IN_COOLDOWN } from './Const'
 
 const apiClient = getApiCLient()
 
@@ -142,6 +142,21 @@ export default class BasePlayer {
             return waitForCooldown(actionResponse.data.cooldown)
         }
         return Promise.reject<number>(actionResponse.code)
+    }
+
+    async handleActionErrors(errorCode: number, callAgainFunction: any) {
+        switch (errorCode) {
+            case ERROR_CODE_STILL_IN_COOLDOWN:
+                console.log('2nd attempt after cooldown')
+                return await callAgainFunction()
+            case ERROR_CODE_NOT_FOUND:
+                return await callAgainFunction()
+            case ERROR_CODE_SLOT_EMPTY:
+                break
+            default:
+                console.error(`Unknown error ${errorCode}`, callAgainFunction)
+                return Promise.resolve()
+        }
     }
 
     async handleActionErrorNotFound(x: number, y: number) {

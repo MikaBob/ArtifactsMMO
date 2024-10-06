@@ -1,13 +1,12 @@
 /* eslint-disable no-async-promise-executor */
-import { CraftSchemaSkillEnum, InventorySlot, ItemEffectSchema, ItemSchema, MonsterSchema, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
+import { CraftSchemaSkillEnum, EquipSchemaSlotEnum, InventorySlot, ItemEffectSchema, ItemSchema, MonsterSchema, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
 import BasePlayer from './Actions'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
 import { findResourceBySkill } from './Resources'
-import { fromCoordinatesToDestination, getLowestTenOfLevel } from './Utils'
-import { resolve } from 'path'
+import { equipementFromSlotToType, fromCoordinatesToDestination, getItemEffectByName, getLowestTenOfLevel } from './Utils'
 import { findItemsBySkill, findItemsByType, getItemsInBank } from './Items'
 import { findMonsterByName } from './Monsters'
-import { ERROR_CODE_STILL_IN_COOLDOWN, ERROR_CODE_SLOT_EMPTY } from './Const'
+import { ItemEffectEnum, ItemTypeEnum } from './Const'
 
 export default class Player extends BasePlayer {
     gatherResource(resourceSkill: ResourceSchemaSkillEnum, resourceLevel: number = -1) {
@@ -29,8 +28,8 @@ export default class Player extends BasePlayer {
             await this.changeWeaponForTool(resourceSkill)
             await this.moveTo(mapToGatherResource.x, mapToGatherResource.y)
             while (this.getCurrentInventoryLevel() < this.me.inventory_max_items) {
-                await this.gather().catch(async () => {
-                    await this.handleActionErrorNotFound(mapToGatherResource.x, mapToGatherResource.y)
+                await this.gather().catch(reason => {
+                    this.handleActionErrors(reason, this.handleActionErrorNotFound(mapToGatherResource.x, mapToGatherResource.y))
                 })
             }
             console.log(`${this.me.name}: Inventory full`)
@@ -108,24 +107,15 @@ export default class Player extends BasePlayer {
             if (craftToDo.craft.skill === undefined) return
             await this.goToBuildingFor(craftToDo.craft.skill)
             console.log(`${this.me.name}: Start crafting  '${craftToDo.name}' x${amountOfCrafts}`)
-            await this.craft(craftToDo.code, amountOfCrafts).catch(async (errorCode: number) => {
-                switch (errorCode) {
-                    case ERROR_CODE_STILL_IN_COOLDOWN:
-                        console.log('2nd attempt after cooldown')
-                        await this.craft(craftToDo.code, amountOfCrafts)
-                        break
-                    case ERROR_CODE_SLOT_EMPTY:
-                        break
-                    default:
-                        return Promise.reject()
-                }
+            await this.craft(craftToDo.code, amountOfCrafts).catch(reason => {
+                this.handleActionErrors(reason, this.craft(craftToDo.code, amountOfCrafts))
             })
             console.log(`${this.me.name}: Crafting done`)
             await this.emptyInventoryInBank().then(resolve)
         })
     }
 
-    fightMonster(monsterName: string, amountOfKillToDO: number = 300) {
+    fightMonster(monsterName: string, amountOfKillToDo: number = 300) {
         return new Promise<void>(async resolve => {
             console.log(`${this.me.name}: Try action fight monster ${monsterName}`)
             const mapsWhereMonsterIsPresent = await findMapsWithContent(monsterName)
@@ -138,43 +128,75 @@ export default class Player extends BasePlayer {
             }
 
             console.log(`${this.me.name}: Start fighting '${monsterToFight.name}' at ${mapToFight._id}`)
+            await this.emptyInventoryInBank()
             await this.changeEquipementForMonster(monsterToFight)
             await this.moveTo(mapToFight.x, mapToFight.y)
+
             let bodyCount = 0
-            while (this.getCurrentInventoryLevel() < this.me.inventory_max_items / 2 && bodyCount < amountOfKillToDO) {
+            while (this.getCurrentInventoryLevel() < this.me.inventory_max_items && bodyCount < amountOfKillToDo) {
                 await this.fight()
-                    .catch(async () => {
-                        await this.handleActionErrorNotFound(mapToFight.x, mapToFight.y)
-                    })
                     .then(() => {
                         bodyCount++
                     })
+                    .catch(reason => {
+                        bodyCount--
+                        this.handleActionErrors(reason, this.handleActionErrorNotFound(mapToFight.x, mapToFight.y))
+                    })
             }
             console.log(`${this.me.name}: Inventory full`)
-            await this.emptyInventoryInBank().then(resolve)
+            return await this.emptyInventoryInBank().then(async () => {
+                if (bodyCount < amountOfKillToDo) {
+                    console.log(`Still need to fight ${amountOfKillToDo - bodyCount} ${monsterName}`)
+                    return await this.fightMonster(monsterName, amountOfKillToDo - bodyCount)
+                } else resolve()
+            })
+        })
+    }
+
+    completeMonsterTask(taskType: TaskSchemaTypeEnum) {
+        return new Promise<void>(async resolve => {
+            console.log(`${this.me.name}: Start to work on task '${taskType}'`)
+            const currentTask = this.getCurrentTask()
+            if (currentTask === null) {
+                // get a new one
+                // if can't resolve
+                this.goToBuildingFor(taskType)
+            }
+            resolve()
         })
     }
 
     emptyInventoryInBank() {
         const itemToKeep = [
-            'golden_egg',
-            'golden_shrimp',
-            'emerald',
-            'topaz',
-            'ruby',
-            'sapphire',
+            // Tools
             'iron_pickaxe',
             'gold_pickaxe',
             'iron_axe',
             'gold_axe',
             'spruce_fishing_rod',
             'gold_fishing_rod',
-            'iron_sword',
-            'iron_dagger',
-            'fire_bow',
-            'greater_wooden_staff',
-            'mushstaff',
-            'mushmush_bow',
+            // Gears
+            'steel_shield',
+            'skeleton_pants',
+            'skeleton_helmet',
+            'skeleton_armor',
+            'steel_helm',
+            'steel_armor',
+            'steel_legs_armor',
+            'tromatising_mask',
+            'serpent_skin_armor',
+            'serpent_skin_legs_armor',
+            'magic_wizard_hat',
+            'fire_and_earth_amulet',
+            'air_and_water_amulet',
+            'iron_ring',
+            // Weapons
+            'skull_staff',
+            'forest_whip',
+            'battlestaff',
+            'steel_battleaxe',
+            // Exceptions
+            'jasper_crystal',
         ]
         return new Promise<void>(async resolve => {
             console.log(`${this.me.name}: Start emptying inventory in bank`)
@@ -182,12 +204,12 @@ export default class Player extends BasePlayer {
             if (!this.me.inventory) return
             for (const item of this.me.inventory) {
                 if (item.quantity > 0 && itemToKeep.indexOf(item.code) === -1)
-                    await this.depositItem(item.code, item.quantity).catch(async () => {
-                        await this.handleActionErrorNotFound(4, 1)
+                    await this.depositItem(item.code, item.quantity).catch(reason => {
+                        this.handleActionErrors(reason, this.handleActionErrorNotFound(4, 1))
                     })
             }
-            await this.depositGold().catch(async () => {
-                await this.handleActionErrorNotFound(4, 1)
+            await this.depositGold().catch(reason => {
+                this.handleActionErrors(reason, this.handleActionErrorNotFound(4, 1))
             })
             resolve()
         })
@@ -196,71 +218,129 @@ export default class Player extends BasePlayer {
     async changeWeaponForTool(resourceSkill: ResourceSchemaSkillEnum) {
         let bestWeapon: string | null = null
         switch (resourceSkill) {
-            case 'mining':
+            case ResourceSchemaSkillEnum.Mining:
                 bestWeapon = this.hasItemInInventory('gold_pickaxe') ? 'gold_pickaxe' : this.hasItemInInventory('iron_pickaxe') ? 'iron_pickaxe' : null
                 break
-            case 'woodcutting':
+            case ResourceSchemaSkillEnum.Woodcutting:
                 bestWeapon = this.hasItemInInventory('gold_axe') ? 'gold_axe' : this.hasItemInInventory('iron_axe') ? 'iron_axe' : null
                 break
-            case 'fishing':
+            case ResourceSchemaSkillEnum.Fishing:
                 bestWeapon = this.hasItemInInventory('gold_fishing_rod') ? 'gold_fishing_rod' : this.hasItemInInventory('spruce_fishing_rod') ? 'spruce_fishing_rod' : null
                 break
         }
         if (bestWeapon !== null) {
-            await this.unequip('weapon')
-            await this.equip(bestWeapon, 'weapon')
+            await this.unequip(EquipSchemaSlotEnum.Weapon)
+            await this.equip(bestWeapon, EquipSchemaSlotEnum.Weapon)
         }
     }
 
     async changeEquipementForMonster(monster: MonsterSchema) {
-        await this.unequip('weapon')
-        // Weapon
-        const listOfAvailableWeapons: ItemSchema[] = []
-        const allGameWeapons = await findItemsByType('weapon')
+        let bestWeapon: ItemSchema | null = null
+        for (const unequipSchemaSlot of Object.entries<ItemTypeEnum>(ItemTypeEnum)) {
+            const equipementSlotType: ItemTypeEnum = unequipSchemaSlot[1]
+            console.log(`Searching best ${equipementSlotType}`)
 
-        // InventorySlot does not provide the item type. We don't know which slots are weapons
-        // hence filtering through all games' weapons
+            const equipementType = equipementFromSlotToType(equipementSlotType)
+            const allGearOfThatType = await findItemsByType(equipementType)
+
+            let hasAtLeastOneItemInIventory = false
         this.me.inventory?.forEach((slot: InventorySlot) => {
-            allGameWeapons.forEach((weapon: ItemSchema) => {
-                if (weapon.code === slot.code) {
-                    listOfAvailableWeapons.push(weapon)
+                allGearOfThatType.forEach((gear: ItemSchema) => {
+                    if (gear.code === slot.code) {
+                        hasAtLeastOneItemInIventory = true
                 }
             })
         })
 
-        if (listOfAvailableWeapons.length < 1) {
-            console.log(`${this.me.name}: No weapon found in inventory`, listOfAvailableWeapons)
-            resolve()
-            return
+            if (!hasAtLeastOneItemInIventory) {
+                console.log(`Do not have any ${equipementType} in inventory`)
+                continue
+            }
+
+            await this.unequip(equipementSlotType).catch(async reason => {
+                await this.handleActionErrors(reason, this.unequip(equipementSlotType))
+            })
+
+            const listOfAvailableGears: ItemSchema[] = []
+            this.me.inventory?.forEach((slot: InventorySlot) => {
+                allGearOfThatType.forEach((gear: ItemSchema) => {
+                    if (gear.code === slot.code) {
+                        listOfAvailableGears.push(gear)
+                    }
+                })
+            })
+
+            if (listOfAvailableGears.length < 1) {
+                console.log(`${this.me.name}: No ${equipementType} found in inventory`, listOfAvailableGears)
+                continue
         }
 
-        let bestWeapon: ItemSchema & { total_damage: number } = { ...listOfAvailableWeapons[0], total_damage: 0 }
-        listOfAvailableWeapons.forEach((weapon: ItemSchema) => {
-            let totalWeaponDamage = 0
-            weapon.effects?.forEach((weaponEffect: ItemEffectSchema) => {
-                switch (weaponEffect.name) {
-                    case 'attack_fire':
-                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_fire / 100)
+            let bestGear: ItemSchema & { total_points: number } = { ...listOfAvailableGears[0], total_points: 0 }
+            listOfAvailableGears.forEach((gear: ItemSchema) => {
+                let totalPoints = 0
+                gear.effects?.forEach((gearEffect: ItemEffectSchema) => {
+                    switch (gearEffect.name) {
+                        // Attack
+                        case ItemEffectEnum.Attack_Fire:
+                            totalPoints += gearEffect.value * (1 - monster.res_fire / 100)
+                            break
+                        case ItemEffectEnum.Attack_Water:
+                            totalPoints += gearEffect.value * (1 - monster.res_water / 100)
+                            break
+                        case ItemEffectEnum.Attack_Earth:
+                            totalPoints += gearEffect.value * (1 - monster.res_earth / 100)
+                            break
+                        case ItemEffectEnum.Attack_Air:
+                            totalPoints += gearEffect.value * (1 - monster.res_air / 100)
+                            break
+                        // Damages
+                        case ItemEffectEnum.Damage_Fire:
+                            totalPoints +=
+                                (1 + gearEffect.value / 100) * (bestWeapon !== null ? (getItemEffectByName(bestWeapon, ItemEffectEnum.Attack_Fire)?.value ?? 0) : 0) * (1 - monster.res_fire / 100)
+                            break
+                        case ItemEffectEnum.Damage_Water:
+                            totalPoints +=
+                                (1 + gearEffect.value / 100) * (bestWeapon !== null ? (getItemEffectByName(bestWeapon, ItemEffectEnum.Attack_Water)?.value ?? 0) : 0) * (1 - monster.res_water / 100)
+                            break
+                        case ItemEffectEnum.Damage_Earth:
+                            totalPoints +=
+                                (1 + gearEffect.value / 100) * (bestWeapon !== null ? (getItemEffectByName(bestWeapon, ItemEffectEnum.Attack_Earth)?.value ?? 0) : 0) * (1 - monster.res_earth / 100)
+                            break
+                        case ItemEffectEnum.Damage_Air:
+                            totalPoints +=
+                                (1 + gearEffect.value / 100) * (bestWeapon !== null ? (getItemEffectByName(bestWeapon, ItemEffectEnum.Attack_Air)?.value ?? 0) : 0) * (1 - monster.res_air / 100)
+                            break
+                        // Resistances
+                        case ItemEffectEnum.Resistance_Fire:
+                            totalPoints += monster.attack_fire * (1 + gearEffect.value / 100)
+                            break
+                        case ItemEffectEnum.Resistance_Water:
+                            totalPoints += monster.attack_water * (1 + gearEffect.value / 100)
+                            break
+                        case ItemEffectEnum.Resistance_Earth:
+                            totalPoints += monster.attack_earth * (1 + gearEffect.value / 100)
                         break
-                    case 'attack_water':
-                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_water / 100)
+                        case ItemEffectEnum.Resistance_Air:
+                            totalPoints += monster.attack_air * (1 + gearEffect.value / 100)
                         break
-                    case 'attack_earth':
-                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_earth / 100)
+                        // Miscellaneous
+                        case ItemEffectEnum.Hit_Point:
+                        case ItemEffectEnum.Haste:
+                            totalPoints += gearEffect.value / 2
                         break
-                    case 'attack_air':
-                        totalWeaponDamage += weaponEffect.value * (1 - monster.res_air / 100)
+                        case ItemEffectEnum.Woodcutting:
+                        case ItemEffectEnum.Mining:
+                        case ItemEffectEnum.Fishing:
                         break
+                        default:
+                            console.error(`Could not identify gear effect '${gearEffect.name}' from gear ${gear.name}`, gear)
                 }
             })
-            bestWeapon = bestWeapon.total_damage < totalWeaponDamage ? { ...weapon, total_damage: totalWeaponDamage } : bestWeapon
+                bestGear = bestGear.total_points < totalPoints ? { ...gear, total_points: totalPoints } : bestGear
+                if (bestGear.type === ItemTypeEnum.Weapon) bestWeapon = bestGear
         })
-
-        await this.equip(bestWeapon.code, 'weapon')
+            await this.equip(bestGear.code, equipementSlotType)
     }
-
-    getStats() {
-        return this.me
     }
 }
 

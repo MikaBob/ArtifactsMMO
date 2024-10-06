@@ -15,24 +15,30 @@ export const getCharacterByName = async (name: PlayerName): Promise<CharacterSch
     console.log(name)
     return (await getApiCLient().characters.getCharacterCharactersNameGet(name)).data.data
 }
-
-export type ActionLoop = GatherAction | CraftAction | FightAction
+export enum ActionType {
+    Gather = 'gather',
+    Craft = 'craft',
+    Fight = 'fight',
+}
+export type ActionLoop = (GatherAction | CraftAction | FightAction) & {
+    repeatFor: number
+}
 
 export type GatherAction = {
-    actionType: 'gather'
+    actionType: ActionType.Gather
     actionName: ResourceSchemaSkillEnum
     level?: number
 }
 
 export type CraftAction = {
-    actionType: 'craft'
+    actionType: ActionType.Craft
     actionName: CraftSchemaSkillEnum
     level?: number
 }
 
 export type FightAction = {
-    actionType: 'fight'
-    actionName: string
+    actionType: ActionType.Fight
+    actionName: MonsterEnum
     amount?: number
 }
 
@@ -41,109 +47,179 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
         case 'Swidz':
             return [
                 {
-                    actionType: 'fight',
-                    actionName: 'skeleton',
+                    actionType: ActionType.Craft,
+                    actionName: CraftSchemaSkillEnum.Weaponcrafting,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'gather',
-                    actionName: 'woodcutting',
+                    actionType: ActionType.Craft,
+                    actionName: CraftSchemaSkillEnum.Weaponcrafting,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Craft,
+                    actionName: CraftSchemaSkillEnum.Weaponcrafting,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Mining,
                     level: 10,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'craft',
-                    actionName: 'woodcutting',
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
                     level: 10,
+                    repeatFor: -1,
                 },
-
                 {
-                    actionType: 'fight',
-                    actionName: 'blue_slime',
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    level: 10,
+                    repeatFor: -1,
                 },
             ]
         case 'Nolie':
             return [
                 {
-                    actionType: 'craft',
-                    actionName: 'gearcrafting',
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'craft',
-                    actionName: 'gearcrafting',
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'craft',
-                    actionName: 'gearcrafting',
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'craft',
-                    actionName: 'gearcrafting',
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Pig,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'fight',
-                    actionName: 'chicken',
-                    amount: 399,
-                },
-                {
-                    actionType: 'fight',
-                    actionName: 'cow',
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Skeleton,
+                    repeatFor: -1,
                 },
             ]
         case 'Blargh':
             return [
                 {
-                    actionType: 'gather',
-                    actionName: 'mining',
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Mining,
                     level: 10,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'craft',
-                    actionName: 'mining',
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
                     level: 10,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'fight',
-                    actionName: 'skeleton',
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    level: 10,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'fight',
-                    actionName: 'cow',
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Green_Slime,
+                    amount: 112,
+                    repeatFor: 1,
+                },
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Pig,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Skeleton,
+                    repeatFor: -1,
                 },
             ]
         case 'Niebieska':
             return [
+                
                 {
-                    actionType: 'craft',
-                    actionName: 'jewelrycrafting',
-                    level: 10,
+                    actionType: ActionType.Craft,
+                    actionName: CraftSchemaSkillEnum.Jewelrycrafting,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'fight',
-                    actionName: 'yellow_slime',
-                    amount: 131,
+                    actionType: ActionType.Craft,
+                    actionName: CraftSchemaSkillEnum.Jewelrycrafting,
+                    repeatFor: -1,
+                },
+                
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Skeleton,
+                    amount: 122,
+                    repeatFor: 1,
                 },
                 {
-                    actionType: 'gather',
-                    actionName: 'mining',
-                    level: 10,
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
                 },
                 {
-                    actionType: 'craft',
-                    actionName: 'mining',
-                    level: 10,
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
                 },
             ]
         case 'Chief':
             return [
                 {
-                    actionType: 'gather',
-                    actionName: 'fishing',
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Craft,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
                 },
             ]
         default:
             return [
                 {
-                    actionType: 'gather',
-                    actionName: 'mining',
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    repeatFor: -1,
                 },
             ]
     }

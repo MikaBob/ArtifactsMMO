@@ -1,4 +1,4 @@
-import { CraftAction, FightAction, GatherAction, getCharacterActions, getCharacterByName } from './Character'
+import { ActionType, CraftAction, FightAction, GatherAction, getCharacterActions, getCharacterByName } from './Character'
 import Player from './Player'
 
 export const main = async () => {
@@ -9,18 +9,20 @@ export const main = async () => {
 
     Promise.resolve().then(async function resolver(): Promise<void> {
         try {
-            const actionsToDo = getCharacterActions(player.getStats().name)
+            const actionsToDo = getCharacterActions(playerName)
             for (let i = 0; i < actionsToDo.length; i++) {
-                if (actionsToDo[i].actionType === 'craft') {
+                if (actionsToDo[i].actionType === ActionType.Craft) {
                     const craftAction = actionsToDo[i] as CraftAction
                     await player.craftItems(craftAction.actionName, craftAction.level)
-                } else if (actionsToDo[i].actionType === 'gather') {
+                } else if (actionsToDo[i].actionType === ActionType.Gather) {
                     const gathrerAction = actionsToDo[i] as GatherAction
                     await player.gatherResource(gathrerAction.actionName, gathrerAction.level)
-                } else if (actionsToDo[i].actionType === 'fight') {
+                } else if (actionsToDo[i].actionType === ActionType.Fight) {
                     const fightAction = actionsToDo[i] as FightAction
                     await player.fightMonster(fightAction.actionName, fightAction.amount)
                 }
+                actionsToDo[i].repeatFor--
+                if (actionsToDo[i].repeatFor === 0) actionsToDo.splice(i, 1)
             }
         } catch (error) {
             console.error(error)

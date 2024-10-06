@@ -58,7 +58,7 @@ const init = () => {
             const apiError: APIErrorType | undefined = error.response?.data?.error
             if (error.response !== undefined) {
                 const { method, url, data } = error.response.config
-                console.error(`API error ${method.toUpperCase()} ${url} ${data ?? ''}`, apiError)
+                console.error(`API error ${method.toUpperCase()} ${url} ${data ?? ''}`, error.response.data)
             } else {
                 console.error(error)
             }
