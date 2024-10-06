@@ -15,6 +15,11 @@ import {
     EquipSchema,
     EquipSchemaSlotEnum,
     InventorySlot,
+    TaskSchema,
+    TaskSchemaTypeEnum,
+    TaskResponseSchema,
+    TasksRewardResponseSchema,
+    TaskCancelledResponseSchema,
 } from 'artifactsmmo-sdk'
 import { APIErrorType, getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
@@ -33,7 +38,7 @@ export default class BasePlayer {
         console.log(`${this.me.name} joined the game`)
     }
 
-    async goToBuildingFor(skill: SkillEnum | 'bank' | 'monsters' | 'items' | 'grand_exchange') {
+    async goToBuildingFor(skill: SkillEnum | 'bank' | TaskSchemaTypeEnum | 'grand_exchange') {
         if (skill === 'fishing') skill = 'cooking'
         const mapsWithWorkshop = await findMapsWithContent(skill)
         const mapToGoTo = await getClosestMapFromDestination(mapsWithWorkshop, fromCoordinatesToDestination(this.me.x, this.me.y))
@@ -41,6 +46,18 @@ export default class BasePlayer {
     }
 
     // API calls
+    async acceptNewTask(): ActionCallbackResponse {
+        console.log(`${this.me.name}: get a new task`)
+        return await this.actionCallback((await apiClient.myCharacters.actionAcceptNewTaskMyNameActionTaskNewPost(this.me.name)).data)
+    }
+    async completeCurrentTask(): ActionCallbackResponse {
+        console.log(`${this.me.name}: complete current task`)
+        return await this.actionCallback((await apiClient.myCharacters.actionCompleteTaskMyNameActionTaskCompletePost(this.me.name)).data)
+    }
+    async cancelCurrentTask(): ActionCallbackResponse {
+        console.log(`${this.me.name}: cancel current task`)
+        return await this.actionCallback((await apiClient.myCharacters.actionTaskCancelMyNameActionTaskCancelPost(this.me.name)).data)
+    }
     async depositItem(itemName: string, quantity: number): ActionCallbackResponse {
         console.log(`${this.me.name}: Deposit ${quantity} ${itemName} to bank`)
         const depositSchema: SimpleItemSchema = { code: itemName, quantity: quantity }
@@ -135,16 +152,19 @@ export default class BasePlayer {
             | BankItemTransactionResponseSchema
             | BankGoldTransactionResponseSchema
             | EquipmentResponseSchema
+            | TaskResponseSchema
+            | TasksRewardResponseSchema
+            | TaskCancelledResponseSchema
             | APIErrorType,
     ): ActionCallbackResponse {
-        if (actionResponse.data !== undefined) {
+        if (actionResponse !== undefined && actionResponse.data !== undefined) {
             this.updateCharacter(actionResponse.data.character)
             return waitForCooldown(actionResponse.data.cooldown)
         }
         return Promise.reject<number>(actionResponse.code)
     }
 
-    async handleActionErrors(errorCode: number, callAgainFunction: any) {
+    async handleActionErrors(errorCode: number, callAgainFunction: CallableFunction) {
         switch (errorCode) {
             case ERROR_CODE_STILL_IN_COOLDOWN:
                 console.log('2nd attempt after cooldown')
@@ -195,5 +215,12 @@ export default class BasePlayer {
             default:
                 return 1
         }
+    }
+
+    getCurrentTask(): TaskSchema | null {
+        if (this.me.task !== '' && (this.me.task_type === TaskSchemaTypeEnum.Items || this.me.task_type === TaskSchemaTypeEnum.Monsters)) {
+            return { code: this.me.task, type: this.me.task_type, total: this.me.task_total }
+        }
+        return null
     }
 }

@@ -1,5 +1,6 @@
-import { CharacterSchema, CraftSchemaSkillEnum, ResourceSchemaSkillEnum } from 'artifactsmmo-sdk'
+import { CharacterSchema, CraftSchemaSkillEnum, ResourceSchemaSkillEnum, TaskSchemaTypeEnum } from 'artifactsmmo-sdk'
 import { getApiCLient } from './ApiClient'
+import { MonsterEnum } from './Const'
 
 export const PlayerName = {
     Swidz: 'Swidz',
@@ -19,8 +20,9 @@ export enum ActionType {
     Gather = 'gather',
     Craft = 'craft',
     Fight = 'fight',
+    Task = 'task',
 }
-export type ActionLoop = (GatherAction | CraftAction | FightAction) & {
+export type ActionLoop = (GatherAction | CraftAction | FightAction | TaskAction) & {
     repeatFor: number
 }
 
@@ -39,6 +41,12 @@ export type CraftAction = {
 export type FightAction = {
     actionType: ActionType.Fight
     actionName: MonsterEnum
+    amount?: number
+}
+
+export type TaskAction = {
+    actionType: ActionType.Task
+    actionName: TaskSchemaTypeEnum
     amount?: number
 }
 
@@ -70,13 +78,23 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                 {
                     actionType: ActionType.Craft,
                     actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
+                    level: 20,
                     repeatFor: -1,
                 },
                 {
                     actionType: ActionType.Craft,
                     actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
+                    level: 20,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Wolf,
                     repeatFor: -1,
                 },
             ]
@@ -85,26 +103,35 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                 {
                     actionType: ActionType.Gather,
                     actionName: ResourceSchemaSkillEnum.Mining,
+                    level: 10,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    level: 10,
                     repeatFor: -1,
                 },
                 {
                     actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    level: 10,
                     repeatFor: -1,
                 },
                 {
                     actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    level: 10,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
                     repeatFor: -1,
                 },
                 {
                     actionType: ActionType.Fight,
                     actionName: MonsterEnum.Pig,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Skeleton,
                     repeatFor: -1,
                 },
             ]
@@ -112,31 +139,19 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
             return [
                 {
                     actionType: ActionType.Gather,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    level: 1,
                     repeatFor: -1,
                 },
                 {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    level: 1,
                     repeatFor: -1,
                 },
                 {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Green_Slime,
-                    amount: 112,
-                    repeatFor: 1,
-                },
-                {
-                    actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Pig,
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
                     repeatFor: -1,
                 },
                 {
@@ -147,7 +162,6 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
             ]
         case 'Niebieska':
             return [
-                
                 {
                     actionType: ActionType.Craft,
                     actionName: CraftSchemaSkillEnum.Jewelrycrafting,
@@ -157,27 +171,32 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     actionType: ActionType.Craft,
                     actionName: CraftSchemaSkillEnum.Jewelrycrafting,
                     repeatFor: -1,
-                },
-                
-                {
-                    actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Skeleton,
-                    amount: 122,
-                    repeatFor: 1,
                 },
                 {
                     actionType: ActionType.Gather,
-                    actionName: ResourceSchemaSkillEnum.Mining,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    level: 1,
                     repeatFor: -1,
                 },
                 {
                     actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
+                    actionName: ResourceSchemaSkillEnum.Woodcutting,
+                    level: 20,
                     repeatFor: -1,
                 },
                 {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Chicken,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Green_Slime,
                     repeatFor: -1,
                 },
             ]

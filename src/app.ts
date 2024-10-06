@@ -1,4 +1,4 @@
-import { ActionType, CraftAction, FightAction, GatherAction, getCharacterActions, getCharacterByName } from './Character'
+import { ActionType, CraftAction, FightAction, GatherAction, getCharacterActions, getCharacterByName, TaskAction } from './Character'
 import Player from './Player'
 
 export const main = async () => {
@@ -20,6 +20,9 @@ export const main = async () => {
                 } else if (actionsToDo[i].actionType === ActionType.Fight) {
                     const fightAction = actionsToDo[i] as FightAction
                     await player.fightMonster(fightAction.actionName, fightAction.amount)
+                } else if (actionsToDo[i].actionType === ActionType.Task) {
+                    const taskAction = actionsToDo[i] as TaskAction
+                    await player.completeMonsterTask(taskAction.actionName)
                 }
                 actionsToDo[i].repeatFor--
                 if (actionsToDo[i].repeatFor === 0) actionsToDo.splice(i, 1)

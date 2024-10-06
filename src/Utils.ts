@@ -47,3 +47,19 @@ export const getItemEffectByName = (item: ItemSchema, effectName: ItemEffectEnum
     }
     return null
 }
+
+/*
+
+Monsters:
+
+    Level 1 to 14: 3 task coins
+    Level 15 to 29: 4 task coins
+    Level 30 to 35: 5 task coins
+
+Items:
+
+    Level 1 to 14: 2 task coins
+    Level 15 to 29: 3 task coins
+    Level 30 to 35: 4 task coins
+
+*/

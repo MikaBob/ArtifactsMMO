@@ -62,6 +62,15 @@ const init = () => {
             } else {
                 console.error(error)
             }
+
+            if (error.response.status > 499) {
+                console.error(`Error code ${error.response.status}`, error)
+                await new Promise(resolve => {
+                    setTimeout(resolve, 10 * 1000)
+                })
+                return instance.request(error.config)
+            }
+
             if (apiError?.code === ERROR_CODE_STILL_IN_COOLDOWN) {
                 const regexResult = /(\d+\.\d+) seconds.+/.exec(apiError.message ?? '')
                 const retryAfter = regexResult !== null ? parseInt(regexResult[1]) + 1 : 3
