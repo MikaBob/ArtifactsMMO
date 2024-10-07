@@ -110,6 +110,10 @@ export default class Player extends BasePlayer {
             await this.craft(craftToDo.code, amountOfCrafts).catch(reason => {
                 this.handleActionErrors(reason, async () => await this.craft(craftToDo.code, amountOfCrafts))
             })
+            await this.recycle(craftToDo.code, amountOfCrafts).catch(reason => {
+                this.handleActionErrors(reason, async () => await this.recycle(craftToDo.code, amountOfCrafts))
+            })
+
             console.log(`${this.me.name}: Crafting done`)
             await this.emptyInventoryInBank().then(resolve)
         })

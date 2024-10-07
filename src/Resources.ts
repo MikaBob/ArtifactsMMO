@@ -3,8 +3,8 @@ import { getApiCLient } from './ApiClient'
 import { COLLECTION_NAME_FOR_RESOURCES, ResourceDocument } from './db/models/ResourceDocument'
 import { Db } from 'mongodb'
 import { connectToMongo } from './db/dbDriver'
+import { MAX_PAGE_SIZE } from './Utils'
 
-const MAX_RESOURCES_PAGE_SIZE = 100
 const apiClient = getApiCLient()
 
 export const syncResources = async (): Promise<void> => {
@@ -15,8 +15,8 @@ export const syncResources = async (): Promise<void> => {
         throw new Error('Could not retrive resources information')
     }
 
-    for (let i = 0; i < resourcesDataPage.total / MAX_RESOURCES_PAGE_SIZE; i++) {
-        const resourcesList: ResourceSchema[] = (await apiClient.resources.getAllResourcesResourcesGet(undefined, undefined, undefined, undefined, i + 1, MAX_RESOURCES_PAGE_SIZE)).data.data
+    for (let i = 0; i < resourcesDataPage.total / MAX_PAGE_SIZE; i++) {
+        const resourcesList: ResourceSchema[] = (await apiClient.resources.getAllResourcesResourcesGet(undefined, undefined, undefined, undefined, i + 1, MAX_PAGE_SIZE)).data.data
         await Promise.allSettled(
             resourcesList.map(async (resource: ResourceSchema) => {
                 const resourceDocument = new ResourceDocument(resource)

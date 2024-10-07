@@ -20,6 +20,8 @@ import {
     TaskResponseSchema,
     TasksRewardResponseSchema,
     TaskCancelledResponseSchema,
+    RecyclingSchema,
+    RecyclingResponseSchema,
 } from 'artifactsmmo-sdk'
 import { APIErrorType, getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
@@ -100,6 +102,11 @@ export default class BasePlayer {
         console.log(`${this.me.name}: Craft ${objectToCraft} x${quantity}`)
         return await this.actionCallback((await apiClient.myCharacters.actionCraftingMyNameActionCraftingPost(this.me.name, crafting)).data)
     }
+    async recycle(objectToRecycle: string, quantity: number = 1): ActionCallbackResponse {
+        const recycling: RecyclingSchema = { code: objectToRecycle, quantity: quantity }
+        console.log(`${this.me.name}: Recycle ${objectToRecycle} x${quantity}`)
+        return await this.actionCallback((await apiClient.myCharacters.actionRecyclingMyNameActionRecyclingPost(this.me.name, recycling)).data)
+    }
     async unequip(slotName: UnequipSchemaSlotEnum): ActionCallbackResponse {
         console.log(`${this.me.name}: Unequip ${slotName}`)
         const unequip: UnequipSchema = { slot: slotName }
@@ -149,6 +156,7 @@ export default class BasePlayer {
             | CharacterMovementResponseSchema
             | CharacterFightResponseSchema
             | SkillResponseSchema
+            | RecyclingResponseSchema
             | BankItemTransactionResponseSchema
             | BankGoldTransactionResponseSchema
             | EquipmentResponseSchema

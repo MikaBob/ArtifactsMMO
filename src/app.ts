@@ -1,4 +1,5 @@
 import { ActionType, CraftAction, FightAction, GatherAction, getCharacterActions, getCharacterByName, TaskAction } from './Character'
+import { syncGEItems } from './GEItems'
 import Player from './Player'
 
 export const main = async () => {
@@ -37,5 +38,20 @@ export const main = async () => {
     // Game Over
 }
 
-if (process.argv[2] === undefined) throw new Error('Missing parameter: Character name')
-main()
+if (process.argv[2] === undefined) {
+    const refreshRate = 1000 * 60 * 5
+    Promise.resolve().then(async function resolver(): Promise<void> {
+        try {
+            await syncGEItems()
+            await new Promise(resolve => {
+                setTimeout(resolve, refreshRate)
+            })
+        } catch (error) {
+            console.error(error)
+        } finally {
+            resolver()
+        }
+    })
+} else {
+    main()
+}

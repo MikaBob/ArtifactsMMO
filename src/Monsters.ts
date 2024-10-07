@@ -3,8 +3,8 @@ import { getApiCLient } from './ApiClient'
 import { COLLECTION_NAME_FOR_MONSTERS, MonsterDocument } from './db/models/MonsterDocument'
 import { Db } from 'mongodb'
 import { connectToMongo } from './db/dbDriver'
+import { MAX_PAGE_SIZE } from './Utils'
 
-const MAX_MONSTERS_PAGE_SIZE = 100
 const apiClient = getApiCLient()
 
 export const syncMonsters = async (): Promise<void> => {
@@ -15,8 +15,8 @@ export const syncMonsters = async (): Promise<void> => {
         throw new Error('Could not retrive monsters information')
     }
 
-    for (let i = 0; i < monstersDataPage.total / MAX_MONSTERS_PAGE_SIZE; i++) {
-        const monstersList: MonsterSchema[] = (await apiClient.monsters.getAllMonstersMonstersGet(undefined, undefined, undefined, i + 1, MAX_MONSTERS_PAGE_SIZE)).data.data
+    for (let i = 0; i < monstersDataPage.total / MAX_PAGE_SIZE; i++) {
+        const monstersList: MonsterSchema[] = (await apiClient.monsters.getAllMonstersMonstersGet(undefined, undefined, undefined, i + 1, MAX_PAGE_SIZE)).data.data
         await Promise.allSettled(
             monstersList.map(async (monster: MonsterSchema) => {
                 const monsterDocument = new MonsterDocument(monster)

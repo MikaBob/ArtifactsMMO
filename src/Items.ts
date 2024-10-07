@@ -2,8 +2,8 @@ import { CraftSchemaSkillEnum, DataPageItemSchema, GetAllItemsItemsGetTypeEnum, 
 import { getApiCLient } from './ApiClient'
 import { COLLECTION_NAME_FOR_ITEMS, ItemDocument } from './db/models/ItemDocument'
 import { connectToMongo, Db } from './db/dbDriver'
+import { MAX_PAGE_SIZE } from './Utils'
 
-const MAX_ITEMS_PAGE_SIZE = 100
 const apiClient = getApiCLient()
 
 export const syncItems = async (): Promise<void> => {
@@ -14,8 +14,8 @@ export const syncItems = async (): Promise<void> => {
         throw new Error('Could not retrive items information')
     }
 
-    for (let i = 0; i < itemsDataPage.total / MAX_ITEMS_PAGE_SIZE; i++) {
-        const itemsList: ItemSchema[] = (await apiClient.items.getAllItemsItemsGet(undefined, undefined, undefined, undefined, undefined, undefined, i + 1, MAX_ITEMS_PAGE_SIZE)).data.data
+    for (let i = 0; i < itemsDataPage.total / MAX_PAGE_SIZE; i++) {
+        const itemsList: ItemSchema[] = (await apiClient.items.getAllItemsItemsGet(undefined, undefined, undefined, undefined, undefined, undefined, i + 1, MAX_PAGE_SIZE)).data.data
         await Promise.allSettled(
             itemsList.map(async (item: ItemSchema) => {
                 const itemDocument = new ItemDocument(item)

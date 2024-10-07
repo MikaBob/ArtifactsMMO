@@ -3,8 +3,8 @@ import { getApiCLient } from './ApiClient'
 import { COLLECTION_NAME_FOR_MAPS, MapDocument } from './db/models/MapDocument'
 import { Db } from 'mongodb'
 import { connectToMongo } from './db/dbDriver'
+import { MAX_PAGE_SIZE } from './Utils'
 
-const MAX_MAP_PAGE_SIZE = 100
 const apiClient = getApiCLient()
 
 export const syncMaps = async () => {
@@ -15,8 +15,8 @@ export const syncMaps = async () => {
         throw new Error('Could not retrive maps information')
     }
 
-    for (let i = 0; i < mapsDataPage.total / MAX_MAP_PAGE_SIZE; i++) {
-        const mapsList: MapSchema[] = (await apiClient.maps.getAllMapsMapsGet(undefined, undefined, i + 1, MAX_MAP_PAGE_SIZE)).data.data
+    for (let i = 0; i < mapsDataPage.total / MAX_PAGE_SIZE; i++) {
+        const mapsList: MapSchema[] = (await apiClient.maps.getAllMapsMapsGet(undefined, undefined, i + 1, MAX_PAGE_SIZE)).data.data
         await Promise.allSettled(
             mapsList.map(async (map: MapSchema) => {
                 const mapDocument = new MapDocument(map)

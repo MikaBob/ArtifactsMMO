@@ -1,6 +1,8 @@
 import { CooldownSchema, DestinationSchema, EquipSchemaSlotEnum, GetAllItemsItemsGetTypeEnum, ItemEffectSchema, ItemSchema, UnequipSchemaSlotEnum } from 'artifactsmmo-sdk'
 import { ItemEffectEnum, ItemTypeEnum } from './Const'
 
+export const MAX_PAGE_SIZE = 100
+
 export const fromCoordinatesToDestination = (x: number, y: number): DestinationSchema => {
     return { x: x, y: y } as DestinationSchema
 }
