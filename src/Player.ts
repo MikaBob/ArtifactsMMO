@@ -6,7 +6,7 @@ import { findResourceBySkill } from './Resources'
 import { equipementFromSlotToType, fromCoordinatesToDestination, getItemEffectByName, getLowestTenOfLevel } from './Utils'
 import { findItemsBySkill, findItemsByType, getItemsInBank } from './Items'
 import { findMonsterByName } from './Monsters'
-import { ItemEffectEnum, ItemTypeEnum } from './Const'
+import { ERROR_CODE_MISSING_ITEM, ItemEffectEnum, ItemTypeEnum } from './Const'
 
 export default class Player extends BasePlayer {
     gatherResource(resourceSkill: ResourceSchemaSkillEnum, resourceLevel: number = -1): Promise<void> {
@@ -102,7 +102,13 @@ export default class Player extends BasePlayer {
             if (inventoryCapacity < 0) amountOfCrafts--
             console.log(`${this.me.name}: Amount of craft possible ${amountOfCrafts}`)
             for (const item of craftToDo.craft.items) {
-                await this.withdrawItem(item.code, item.quantity * amountOfCrafts)
+                await this.withdrawItem(item.code, item.quantity * amountOfCrafts).catch(async reason => {
+                    if (reason === ERROR_CODE_MISSING_ITEM) {
+                        console.log('Item missing in Bank. Cancel craft action')
+                        await this.emptyInventoryInBank().then(resolve)
+                    }
+                    this.handleActionErrors(reason, async () => await this.craft(craftToDo.code, amountOfCrafts))
+                })
             }
             if (craftToDo.craft.skill === undefined) return
             await this.goToBuildingFor(craftToDo.craft.skill)
