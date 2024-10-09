@@ -26,7 +26,7 @@ import {
 import { APIErrorType, getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
-import { ERROR_CODE_NOT_FOUND, ERROR_CODE_SLOT_EMPTY, ERROR_CODE_STILL_IN_COOLDOWN } from './Const'
+import { ERROR_CODE_ALREADY_AT_DESTINATION, ERROR_CODE_NOT_FOUND, ERROR_CODE_SLOT_EMPTY, ERROR_CODE_UNRECYCLABLE } from './Const'
 
 const apiClient = getApiCLient()
 
@@ -110,18 +110,7 @@ export default class BasePlayer {
     async unequip(slotName: UnequipSchemaSlotEnum): ActionCallbackResponse {
         console.log(`${this.me.name}: Unequip ${slotName}`)
         const unequip: UnequipSchema = { slot: slotName }
-        return await this.actionCallback((await apiClient.myCharacters.actionUnequipItemMyNameActionUnequipPost(this.me.name, unequip)).data).catch(async (errorCode: number) => {
-            switch (errorCode) {
-                case ERROR_CODE_STILL_IN_COOLDOWN:
-                    console.log('2nd attempt after cooldown')
-                    await this.unequip(slotName)
-                    break
-                case ERROR_CODE_SLOT_EMPTY:
-                    break
-                default:
-                    return Promise.reject()
-            }
-        })
+        return await this.actionCallback((await apiClient.myCharacters.actionUnequipItemMyNameActionUnequipPost(this.me.name, unequip)).data)
     }
 
     async equip(itemCode: string, slotName: EquipSchemaSlotEnum): ActionCallbackResponse {
@@ -129,21 +118,14 @@ export default class BasePlayer {
         const equip: EquipSchema = { code: itemCode, slot: slotName }
         return await this.actionCallback((await apiClient.myCharacters.actionEquipItemMyNameActionEquipPost(this.me.name, equip)).data)
     }
-    async moveTo(x: number, y: number): ActionCallbackResponse {
-        if (this.me.x === x && this.me.y === y) {
+    async moveTo(x: number, y: number, forceCall: boolean = false): ActionCallbackResponse {
+        if (!forceCall && this.me.x === x && this.me.y === y) {
             console.log(`${this.me.name}: Character is already at ${x}.${y}`)
             return new Promise(resolve => setTimeout(resolve, 1000))
         }
 
         console.log(`${this.me.name}: Moving to ${x}.${y}`)
-        return await this.actionCallback((await apiClient.myCharacters.actionMoveMyNameActionMovePost(this.me.name, fromCoordinatesToDestination(x, y))).data).catch(async (errorCode: number) => {
-            switch (errorCode) {
-                case ERROR_CODE_STILL_IN_COOLDOWN:
-                    console.log('2nd attempt after cooldown')
-                    await this.moveTo(x, y)
-                    break
-            }
-        })
+        return await this.actionCallback((await apiClient.myCharacters.actionMoveMyNameActionMovePost(this.me.name, fromCoordinatesToDestination(x, y))).data)
     }
 
     // Utils
@@ -169,26 +151,21 @@ export default class BasePlayer {
             this.updateCharacter(actionResponse.data.character)
             return waitForCooldown(actionResponse.data.cooldown)
         }
-        return Promise.reject<number>(actionResponse.code)
-    }
-
-    async handleActionErrors(errorCode: number, callAgainFunction: CallableFunction) {
-        switch (errorCode) {
-            case ERROR_CODE_STILL_IN_COOLDOWN:
-                console.log('2nd attempt after cooldown')
-                return await callAgainFunction()
-            case ERROR_CODE_NOT_FOUND:
-                return await callAgainFunction()
+        switch (actionResponse.code) {
             case ERROR_CODE_SLOT_EMPTY:
-                break
-            default:
-                console.error(`Unknown error ${errorCode}`, callAgainFunction)
+            case ERROR_CODE_UNRECYCLABLE:
+            case ERROR_CODE_ALREADY_AT_DESTINATION:
                 return Promise.resolve()
+            default:
+                return Promise.reject<number>(actionResponse.code)
         }
     }
 
-    async handleActionErrorNotFound(x: number, y: number) {
-        return await this.moveTo(x, y)
+    async handleErrorNotFound(reason: number, x: number, y: number) {
+        if (reason === ERROR_CODE_NOT_FOUND) {
+            return await this.moveTo(x, y, true)
+        }
+        return Promise.reject()
     }
 
     getCurrentInventoryLevel(): number {

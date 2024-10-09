@@ -1,12 +1,12 @@
 /* eslint-disable no-async-promise-executor */
 import { CraftSchemaSkillEnum, EquipSchemaSlotEnum, InventorySlot, ItemEffectSchema, ItemSchema, MonsterSchema, ResourceSchemaSkillEnum, TaskSchemaTypeEnum } from 'artifactsmmo-sdk'
-import BasePlayer from './Actions'
-import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
-import { findResourceBySkill } from './Resources'
-import { equipementFromSlotToType, fromCoordinatesToDestination, getItemEffectByName, getLowestTenOfLevel } from './Utils'
-import { findItemsBySkill, findItemsByType, getItemsInBank } from './Items'
-import { findMonsterByName } from './Monsters'
 import { ERROR_CODE_MISSING_ITEM, ItemEffectEnum, ItemTypeEnum } from './Const'
+import { findItemsBySkill, findItemsByType, getItemsInBank } from './Items'
+import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
+import { findMonsterByName } from './Monsters'
+import { findResourceBySkill } from './Resources'
+import { fromSlotToTypeToEquipementType, fromCoordinatesToDestination, getItemEffectByName, getLowestTenOfLevel } from './Utils'
+import BasePlayer from './Actions'
 
 export default class Player extends BasePlayer {
     gatherResource(resourceSkill: ResourceSchemaSkillEnum, resourceLevel: number = -1): Promise<void> {
@@ -28,9 +28,7 @@ export default class Player extends BasePlayer {
             await this.changeWeaponForTool(resourceSkill)
             await this.moveTo(mapToGatherResource.x, mapToGatherResource.y)
             while (this.getCurrentInventoryLevel() < this.me.inventory_max_items) {
-                await this.gather().catch(reason => {
-                    this.handleActionErrors(reason, async () => await this.handleActionErrorNotFound(mapToGatherResource.x, mapToGatherResource.y))
-                })
+                await this.gather()
             }
             console.log(`${this.me.name}: Inventory full`)
             await this.emptyInventoryInBank().then(resolve)
@@ -102,23 +100,21 @@ export default class Player extends BasePlayer {
             if (inventoryCapacity < 0) amountOfCrafts--
             console.log(`${this.me.name}: Amount of craft possible ${amountOfCrafts}`)
             for (const item of craftToDo.craft.items) {
-                await this.withdrawItem(item.code, item.quantity * amountOfCrafts).catch(async reason => {
-                    if (reason === ERROR_CODE_MISSING_ITEM) {
-                        console.log('Item missing in Bank. Cancel craft action')
-                        await this.emptyInventoryInBank().then(resolve)
-                    }
-                    this.handleActionErrors(reason, async () => await this.craft(craftToDo.code, amountOfCrafts))
-                })
+                await this.withdrawItem(item.code, item.quantity * amountOfCrafts)
+                    .catch(async reason => await this.handleErrorNotFound(reason, 4, 1))
+                    .catch(async reason => {
+                        if (reason === ERROR_CODE_MISSING_ITEM) {
+                            console.log('Craft not possible anymore, mising item in Bank')
+                            return await this.emptyInventoryInBank().finally(resolve)
+                        }
+                    })
             }
             if (craftToDo.craft.skill === undefined) return
             await this.goToBuildingFor(craftToDo.craft.skill)
             console.log(`${this.me.name}: Start crafting  '${craftToDo.name}' x${amountOfCrafts}`)
-            await this.craft(craftToDo.code, amountOfCrafts).catch(reason => {
-                this.handleActionErrors(reason, async () => await this.craft(craftToDo.code, amountOfCrafts))
-            })
-            await this.recycle(craftToDo.code, amountOfCrafts).catch(reason => {
-                this.handleActionErrors(reason, async () => await this.recycle(craftToDo.code, amountOfCrafts))
-            })
+            await this.craft(craftToDo.code, amountOfCrafts)
+
+            await this.recycle(craftToDo.code, amountOfCrafts)
 
             console.log(`${this.me.name}: Crafting done`)
             await this.emptyInventoryInBank().then(resolve)
@@ -148,9 +144,9 @@ export default class Player extends BasePlayer {
                     .then(() => {
                         bodyCount++
                     })
-                    .catch(reason => {
+                    .catch(async reason => {
                         bodyCount--
-                        this.handleActionErrors(reason, async () => await this.handleActionErrorNotFound(mapToFight.x, mapToFight.y))
+                        await this.handleErrorNotFound(reason, 4, 1)
                     })
             }
             if (bodyCount === amountOfKillToDo) console.log(`${this.me.name}: Amount of kill reached`)
@@ -172,8 +168,9 @@ export default class Player extends BasePlayer {
             if (currentTask === null) {
                 // get a new one
                 await this.goToBuildingFor(taskType)
-                await this.acceptNewTask().catch(reason => {
-                    this.handleActionErrors(reason, async () => this.goToBuildingFor(taskType))
+                await this.acceptNewTask().catch(async reason => {
+                    await this.handleErrorNotFound(reason, 4, 1)
+                    await this.acceptNewTask()
                 })
                 currentTask = this.getCurrentTask()
             }
@@ -189,16 +186,14 @@ export default class Player extends BasePlayer {
                 return resolve()
             }
 
-            if (monsterToFight.level >= 20) {
+            if (monsterToFight.level >= 21) {
                 console.log(`Monster ${monsterToFight.name} is too strong. Cancel task`)
-                await this.cancelCurrentTask().catch(reason => {
-                    this.handleActionErrors(reason, async () => await this.cancelCurrentTask())
-                })
+                await this.cancelCurrentTask()
                 return resolve()
             }
 
             // TODO task "items"
-            //if (currentTask.type === TaskSchemaTypeEnum.Items)
+            // if (currentTask.type === TaskSchemaTypeEnum.Items)
             if (currentTask.type === TaskSchemaTypeEnum.Monsters) {
                 const killToDo = currentTask.total - this.me.task_progress
                 if (killToDo > 0) await this.fightMonster(monsterToFight.code, killToDo)
@@ -206,9 +201,7 @@ export default class Player extends BasePlayer {
             }
 
             await this.goToBuildingFor(taskType)
-            await this.completeCurrentTask().catch(reason => {
-                return this.handleActionErrors(reason, async () => await this.completeCurrentTask())
-            })
+            await this.completeCurrentTask()
 
             resolve()
         })
@@ -223,26 +216,6 @@ export default class Player extends BasePlayer {
             'gold_axe',
             'spruce_fishing_rod',
             'gold_fishing_rod',
-            // Gears
-            'steel_shield',
-            'skeleton_pants',
-            'skeleton_helmet',
-            'skeleton_armor',
-            'steel_helm',
-            'steel_armor',
-            'steel_legs_armor',
-            'tromatising_mask',
-            'serpent_skin_armor',
-            'serpent_skin_legs_armor',
-            'magic_wizard_hat',
-            'fire_and_earth_amulet',
-            'air_and_water_amulet',
-            'iron_ring',
-            // Weapons
-            'skull_staff',
-            'forest_whip',
-            'battlestaff',
-            'steel_battleaxe',
             // Exceptions
             'jasper_crystal',
             'tasks_coin',
@@ -261,17 +234,13 @@ export default class Player extends BasePlayer {
                 return resolve()
             }
 
-            await this.goToBuildingFor('bank')
+            await this.goToBuildingFor('bank').catch(async reason => await this.handleErrorNotFound(reason, 4, 1))
             for (const item of this.me.inventory) {
                 if (item.quantity > 0 && itemToKeep.indexOf(item.code) === -1) {
-                    await this.depositItem(item.code, item.quantity).catch(reason => {
-                        this.handleActionErrors(reason, async () => await this.handleActionErrorNotFound(4, 1))
-                    })
+                    await this.depositItem(item.code, item.quantity).catch(async reason => await this.handleErrorNotFound(reason, 4, 1))
                 }
             }
-            await this.depositGold().catch(reason => {
-                this.handleActionErrors(reason, async () => await this.handleActionErrorNotFound(4, 1))
-            })
+            await this.depositGold().catch(async reason => await this.handleErrorNotFound(reason, 4, 1))
             return resolve()
         })
     }
@@ -299,28 +268,37 @@ export default class Player extends BasePlayer {
         let bestWeapon: ItemSchema | null = null
         for (const unequipSchemaSlot of Object.entries<ItemTypeEnum>(ItemTypeEnum)) {
             const equipementSlotType: ItemTypeEnum = unequipSchemaSlot[1]
-            console.log(`Searching best ${equipementSlotType}`)
+            console.log(`Searching best ${equipementSlotType} against ${monster.code}:`)
 
-            const equipementType = equipementFromSlotToType(equipementSlotType)
+            const equipementType = fromSlotToTypeToEquipementType(equipementSlotType) // ring1 => ring
             const allGearOfThatType = await findItemsByType(equipementType)
 
-            let hasAtLeastOneItemInIventory = false
+            // See what we have in inventory and currently wearing
+            const currentGearName = this.getCurrentEquipementFromSlotName(equipementSlotType)
+            const gearOfThatTypeFromInventory: ItemSchema[] = []
             this.me.inventory?.forEach((slot: InventorySlot) => {
                 allGearOfThatType.forEach((gear: ItemSchema) => {
-                    if (gear.code === slot.code) {
-                        hasAtLeastOneItemInIventory = true
+                    if (gear.code === slot.code || gear.code === currentGearName) {
+                        gearOfThatTypeFromInventory.push(gear)
                     }
                 })
             })
 
-            if (!hasAtLeastOneItemInIventory) {
+            // See what we have in bank
+            this.me.inventory?.forEach((slot: InventorySlot) => {
+                allGearOfThatType.forEach((gear: ItemSchema) => {
+                    if (gear.code === slot.code) {
+                        hasAtLeastOneItemInInventory = true
+                    }
+                })
+            })
+
+            if (!hasAtLeastOneItemInInventory) {
                 console.log(`Do not have any ${equipementType} in inventory`)
                 continue
             }
 
-            await this.unequip(equipementSlotType).catch(reason => {
-                this.handleActionErrors(reason, async () => this.unequip(equipementSlotType))
-            })
+            await this.unequip(equipementSlotType)
 
             const listOfAvailableGears: ItemSchema[] = []
             this.me.inventory?.forEach((slot: InventorySlot) => {

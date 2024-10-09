@@ -1,5 +1,5 @@
 import { ACCOUNT_TOKEN } from '../.env.js'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import {
     AccountsApi,
     AchievementsApi,
@@ -50,39 +50,34 @@ const init = () => {
     const instance = axios.create({})
 
     instance.interceptors.response.use(
-        async success => {
-            return success
-        },
+        null,
         // retry logic for 499 rate-limit errors
-        async error => {
-            const apiError: APIErrorType | undefined = error.response?.data?.error
-            if (error.response !== undefined) {
+        async (error: Error | AxiosError | TypeError) => {
+            if (axios.isAxiosError(error) && error.response !== undefined) {
                 const { method, url, data } = error.response.config
-                console.error(`API error ${method.toUpperCase()} ${url} ${data ?? ''}`, error.response.data)
+                const apiError: APIErrorType | undefined = error.response?.data?.error
+                console.error(`API error: ${(method ?? '').toUpperCase()} ${url} ${data ?? ''}`, apiError)
+
+                if (apiError !== undefined) {
+                    // API custom errors
+                    if (apiError?.code === ERROR_CODE_STILL_IN_COOLDOWN) {
+                        const regexResult = /(\d+\.\d+) seconds.+/.exec(apiError.message ?? '')
+                        const retryAfter = regexResult !== null ? parseInt(regexResult[1]) + 1 : 3
+
+                        console.log(`Waiting for ${retryAfter}sec before re-trying request`)
+                        await new Promise(resolve => {
+                            setTimeout(resolve, retryAfter * 1000)
+                        })
+                        return await instance.request(error.response.config)
+                    }
+                }
+                return { data: apiError }
+            } else if (error instanceof TypeError || error instanceof Error) {
+                console.error(`Error ${error.name}: ${error.message}`, error)
             } else {
-                console.error(error)
+                console.error(`Unknowned error`, error)
             }
-
-            if (error.response.status > 499) {
-                console.error(`Error code ${error.response.status}`, error)
-                await new Promise(resolve => {
-                    setTimeout(resolve, 10 * 1000)
-                })
-                return instance.request(error.config)
-            }
-
-            if (apiError?.code === ERROR_CODE_STILL_IN_COOLDOWN) {
-                const regexResult = /(\d+\.\d+) seconds.+/.exec(apiError.message ?? '')
-                const retryAfter = regexResult !== null ? parseInt(regexResult[1]) + 1 : 3
-
-                console.log(`Waiting for ${retryAfter}sec before re-trying request`)
-                await new Promise(resolve => {
-                    setTimeout(resolve, retryAfter * 1000)
-                })
-                return instance.request(error.config)
-            }
-
-            return { data: apiError }
+            return { data: error }
         },
     )
 
