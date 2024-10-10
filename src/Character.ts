@@ -75,6 +75,12 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     repeatFor: -1,
                 },
                 {
+                    actionType: ActionType.Gather,
+                    actionName: ResourceSchemaSkillEnum.Mining,
+                    level: 20,
+                    repeatFor: -1,
+                },
+                {
                     actionType: ActionType.Craft,
                     actionName: ResourceSchemaSkillEnum.Mining,
                     level: 20,
@@ -82,40 +88,27 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                 },
                 {
                     actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Ogre,
+                    actionName: MonsterEnum.Skeleton,
                     repeatFor: -1,
                 },
                 {
                     actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Flying_Serpent,
+                    actionName: MonsterEnum.Skeleton,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
                     repeatFor: -1,
                 },
             ]
         case 'Nolie':
             return [
                 {
-                    actionType: ActionType.Gather,
-                    actionName: ResourceSchemaSkillEnum.Mining,
+                    actionType: ActionType.Craft,
+                    actionName: CraftSchemaSkillEnum.Mining,
                     level: 1,
-                    repeatFor: -1,
-                },
-                /* {
-                    actionType: ActionType.Gather,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
-                    repeatFor: -1,
+                    repeatFor: 2,
                 },
                 {
                     actionType: ActionType.Craft,
@@ -136,7 +129,17 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     actionType: ActionType.Fight,
                     actionName: MonsterEnum.Skeleton,
                     repeatFor: -1,
-                }, */
+                },
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Pig,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
+                    repeatFor: -1,
+                },
             ]
         case 'Blargh':
             return [
@@ -160,7 +163,17 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                 },
                 {
                     actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Ogre,
+                    actionName: MonsterEnum.Skeleton,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Fight,
+                    actionName: MonsterEnum.Pig,
+                    repeatFor: -1,
+                },
+                {
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
                     repeatFor: -1,
                 },
             ]
@@ -177,19 +190,19 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     repeatFor: -1,
                 },
                 {
-                    actionType: ActionType.Craft,
+                    actionType: ActionType.Gather,
                     actionName: ResourceSchemaSkillEnum.Mining,
                     level: 20,
                     repeatFor: -1,
                 },
                 {
                     actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Flying_Serpent,
+                    actionName: MonsterEnum.Pig,
                     repeatFor: -1,
                 },
                 {
-                    actionType: ActionType.Fight,
-                    actionName: MonsterEnum.Skeleton,
+                    actionType: ActionType.Task,
+                    actionName: TaskSchemaTypeEnum.Monsters,
                     repeatFor: -1,
                 },
             ]
@@ -211,22 +224,6 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                     repeatFor: -1,
                 },
                 {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Woodcutting,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Woodcutting,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Gather,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    level: 10,
-                    repeatFor: -1,
-                },
-                {
                     actionType: ActionType.Gather,
                     actionName: ResourceSchemaSkillEnum.Mining,
                     level: 20,
@@ -239,16 +236,6 @@ export const getCharacterActions = (playerName: PlayerName): ActionLoop[] => {
                 },
                 {
                     actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Craft,
-                    actionName: ResourceSchemaSkillEnum.Mining,
-                    repeatFor: -1,
-                },
-                {
-                    actionType: ActionType.Gather,
                     actionName: ResourceSchemaSkillEnum.Mining,
                     repeatFor: -1,
                 },

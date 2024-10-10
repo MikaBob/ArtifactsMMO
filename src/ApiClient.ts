@@ -75,7 +75,7 @@ const init = () => {
             } else if (error instanceof TypeError || error instanceof Error) {
                 console.error(`Error ${error.name}: ${error.message}`, error)
             } else {
-                console.error(`Unknowned error`, error)
+                console.error(`Unknowned error`, error, axios.isAxiosError(error))
             }
             return { data: error }
         },

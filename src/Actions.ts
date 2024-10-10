@@ -26,7 +26,7 @@ import {
 import { APIErrorType, getApiCLient } from './ApiClient'
 import { fromCoordinatesToDestination, waitForCooldown } from './Utils'
 import { findMapsWithContent, getClosestMapFromDestination } from './Maps'
-import { ERROR_CODE_ALREADY_AT_DESTINATION, ERROR_CODE_NOT_FOUND, ERROR_CODE_SLOT_EMPTY, ERROR_CODE_UNRECYCLABLE } from './Const'
+import { ERROR_CODE_ALREADY_AT_DESTINATION, ERROR_CODE_NOT_FOUND, ERROR_CODE_SLOT_EMPTY, ERROR_CODE_UNRECYCLABLE, ItemTypeEnum } from './Const'
 
 const apiClient = getApiCLient()
 
@@ -207,5 +207,41 @@ export default class BasePlayer {
             return { code: this.me.task, type: this.me.task_type, total: this.me.task_total }
         }
         return null
+    }
+
+    getCurrentEquipementFromSlotName(gearSlotName: ItemTypeEnum): string {
+        switch (gearSlotName) {
+            case ItemTypeEnum.Weapon:
+                return this.me.weapon_slot
+            case ItemTypeEnum.BodyArmor:
+                return this.me.body_armor_slot
+            case ItemTypeEnum.LegArmor:
+                return this.me.leg_armor_slot
+            case ItemTypeEnum.Helmet:
+                return this.me.helmet_slot
+            case ItemTypeEnum.Boots:
+                return this.me.boots_slot
+            case ItemTypeEnum.Shield:
+                return this.me.shield_slot
+            case ItemTypeEnum.Amulet:
+                return this.me.amulet_slot
+            case ItemTypeEnum.Ring1:
+                return this.me.ring1_slot
+            case ItemTypeEnum.Ring2:
+                return this.me.ring2_slot
+            case ItemTypeEnum.Artifact1:
+                return this.me.artifact1_slot
+            case ItemTypeEnum.Artifact2:
+                return this.me.artifact2_slot
+            case ItemTypeEnum.Artifact3:
+                return this.me.artifact3_slot
+            case ItemTypeEnum.Consumable1:
+                return this.me.consumable1_slot
+            case ItemTypeEnum.Consumable2:
+                return this.me.consumable2_slot
+            default:
+                console.error(`Could not find slot name '${gearSlotName}'`)
+                return ''
+        }
     }
 }

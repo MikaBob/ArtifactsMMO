@@ -61,8 +61,7 @@ export default class Player extends BasePlayer {
 
             if (possibleCrafts.length < 1) {
                 console.log(`${this.me.name}: No possible craft found among`, craftsOfThatLevel)
-                resolve()
-                return
+                return resolve()
             }
 
             let craftToDo: PossibleCraft = possibleCrafts[0]
@@ -72,8 +71,7 @@ export default class Player extends BasePlayer {
 
             if (craftToDo.craft === undefined || craftToDo.craft === null || craftToDo.craft.items === undefined) {
                 console.log(`${craftToDo.code} does not have craft recipes ?`, craftToDo)
-                resolve()
-                return
+                return resolve()
             }
 
             console.log(`${this.me.name}: Let's craft `, craftToDo.code, craftToDo.craft.items)
@@ -98,7 +96,13 @@ export default class Player extends BasePlayer {
                 amountOfCrafts++
             }
             if (inventoryCapacity < 0) amountOfCrafts--
+
             console.log(`${this.me.name}: Amount of craft possible ${amountOfCrafts}`)
+            if (amountOfCrafts < 5) {
+                console.log(`${this.me.name}: Can do only ${amountOfCrafts} craft. Waste of time`)
+                return resolve()
+            }
+
             for (const item of craftToDo.craft.items) {
                 await this.withdrawItem(item.code, item.quantity * amountOfCrafts)
                     .catch(async reason => await this.handleErrorNotFound(reason, 4, 1))
@@ -266,56 +270,46 @@ export default class Player extends BasePlayer {
 
     async changeEquipementForMonster(monster: MonsterSchema) {
         let bestWeapon: ItemSchema | null = null
+        const itemsInBank = await getItemsInBank()
         for (const unequipSchemaSlot of Object.entries<ItemTypeEnum>(ItemTypeEnum)) {
             const equipementSlotType: ItemTypeEnum = unequipSchemaSlot[1]
+            if (equipementSlotType == ItemTypeEnum.Consumable1 || equipementSlotType == ItemTypeEnum.Consumable2) continue
             console.log(`Searching best ${equipementSlotType} against ${monster.code}:`)
 
             const equipementType = fromSlotToTypeToEquipementType(equipementSlotType) // ring1 => ring
             const allGearOfThatType = await findItemsByType(equipementType)
+            type ItemSchemaAndMetadata = ItemSchema & { isInInventory: boolean; isInBank: boolean; total_points: number }
 
             // See what we have in inventory and currently wearing
-            const currentGearName = this.getCurrentEquipementFromSlotName(equipementSlotType)
-            const gearOfThatTypeFromInventory: ItemSchema[] = []
+            const currentGearCode = this.getCurrentEquipementFromSlotName(equipementSlotType)
+            const gearOfThatTypeFromInventory: ItemSchemaAndMetadata[] = []
             this.me.inventory?.forEach((slot: InventorySlot) => {
                 allGearOfThatType.forEach((gear: ItemSchema) => {
-                    if (gear.code === slot.code || gear.code === currentGearName) {
-                        gearOfThatTypeFromInventory.push(gear)
+                    if (gear.code === slot.code || gear.code === currentGearCode) {
+                        gearOfThatTypeFromInventory.push({ ...gear, isInInventory: true, isInBank: false, total_points: 0 })
                     }
                 })
             })
 
             // See what we have in bank
-            this.me.inventory?.forEach((slot: InventorySlot) => {
+            const gearOfThatTypeFromBank: ItemSchemaAndMetadata[] = []
+            itemsInBank.forEach(itemInBank => {
                 allGearOfThatType.forEach((gear: ItemSchema) => {
-                    if (gear.code === slot.code) {
-                        hasAtLeastOneItemInInventory = true
+                    if (gear.code === itemInBank.code) {
+                        gearOfThatTypeFromBank.push({ ...gear, isInInventory: false, isInBank: true, total_points: 0 })
                     }
                 })
             })
 
-            if (!hasAtLeastOneItemInInventory) {
-                console.log(`Do not have any ${equipementType} in inventory`)
-                continue
-            }
-
-            await this.unequip(equipementSlotType)
-
-            const listOfAvailableGears: ItemSchema[] = []
-            this.me.inventory?.forEach((slot: InventorySlot) => {
-                allGearOfThatType.forEach((gear: ItemSchema) => {
-                    if (gear.code === slot.code) {
-                        listOfAvailableGears.push(gear)
-                    }
-                })
-            })
+            const listOfAvailableGears: ItemSchemaAndMetadata[] = [...gearOfThatTypeFromInventory, ...gearOfThatTypeFromBank]
 
             if (listOfAvailableGears.length < 1) {
-                console.log(`${this.me.name}: No ${equipementType} found in inventory`, listOfAvailableGears)
+                console.log(`${this.me.name}: No ${equipementType} found in inventory nor bank`, listOfAvailableGears)
                 continue
             }
 
-            let bestGear: ItemSchema & { total_points: number } = { ...listOfAvailableGears[0], total_points: 0 }
-            listOfAvailableGears.forEach((gear: ItemSchema) => {
+            let bestGear: ItemSchemaAndMetadata = listOfAvailableGears[0]
+            listOfAvailableGears.forEach((gear: ItemSchemaAndMetadata) => {
                 let totalPoints = 0
                 gear.effects?.forEach((gearEffect: ItemEffectSchema) => {
                     switch (gearEffect.name) {
@@ -364,8 +358,13 @@ export default class Player extends BasePlayer {
                             break
                         // Miscellaneous
                         case ItemEffectEnum.Hit_Point:
+                            totalPoints += gearEffect.value / 5
+                            break
                         case ItemEffectEnum.Haste:
                             totalPoints += gearEffect.value / 2
+                            break
+                        case ItemEffectEnum.Restore:
+                            totalPoints += gearEffect.value / 10
                             break
                         case ItemEffectEnum.Woodcutting:
                         case ItemEffectEnum.Mining:
@@ -378,7 +377,27 @@ export default class Player extends BasePlayer {
                 bestGear = bestGear.total_points < totalPoints ? { ...gear, total_points: totalPoints } : bestGear
                 if (bestGear.type === ItemTypeEnum.Weapon) bestWeapon = bestGear
             })
-            await this.equip(bestGear.code, equipementSlotType)
+            console.log(`Found that best gear is: ${bestGear.name}`)
+            if (currentGearCode === bestGear.code) {
+                console.log('Already wearing best gear')
+                continue
+            }
+            if (currentGearCode !== bestGear.code) await this.unequip(equipementSlotType)
+            if (bestGear.isInInventory) await this.equip(bestGear.code, equipementSlotType)
+            else if (bestGear.isInBank) {
+                await this.goToBuildingFor('bank')
+                await this.withdrawItem(bestGear.code, 1).catch(async reason => {
+                    if (reason === ERROR_CODE_MISSING_ITEM) {
+                        console.log('Best Gear not in bank anymore')
+                        await this.equip(currentGearCode, equipementSlotType)
+                    }
+                })
+                await this.equip(bestGear.code, equipementSlotType)
+                    .then(async () => await this.depositItem(currentGearCode, 1).catch(() => {})) // ignore any error
+                    .catch(async () => await this.equip(currentGearCode, equipementSlotType))
+            } else {
+                console.error('changeEquipementForMonster error. Item listed but not found ?', listOfAvailableGears, bestGear)
+            }
         }
     }
 }
